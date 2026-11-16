@@ -1,5 +1,6 @@
 // Pembaca data bersama: tampilkan data tersimpan di browser seketika, lalu perbarui dari server.
-const tokn=()=>localStorage.getItem('tok')||(t=>{if(t)localStorage.setItem('tok',t);return t})(prompt('Masukkan token akses'));
+const tokn=()=>(typeof TOKEN_LIHAT!=='undefined'&&TOKEN_LIHAT)||localStorage.getItem('tok')||(t=>{if(t)localStorage.setItem('tok',t);return t})(prompt('Masukkan token akses'));
+const tokAdm=()=>localStorage.getItem('tok_admin')||(t=>{if(t)localStorage.setItem('tok_admin',t);return t})(prompt('Masukkan token ADMIN untuk menyimpan data'));
 async function swr(a,cb,fresh){
   const ck='c_'+a; try{const c=JSON.parse(localStorage.getItem(ck));if(c&&!fresh)cb(c,true)}catch(e){}
   const r=await fetch(`${API}?action=${a}&token=${encodeURIComponent(tokn())}${fresh?'&fresh=1':''}`),d=await r.json();

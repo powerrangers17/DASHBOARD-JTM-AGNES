@@ -40,8 +40,8 @@ const col=p=>p>=100?'var(--gr)':p>=70?'var(--yl)':'var(--rd)';
 const opt=(a,f)=>a.map(x=>`<option value="${esc(f?f(x)[0]:x)}">${esc(f?f(x)[1]:x)}</option>`).join('');
 let M,Y,wk=monday(new Date());
 const tok=()=>localStorage.getItem('tok')||(t=>{if(t)localStorage.setItem('tok',t);return t})(prompt('Masukkan token akses'));
-async function get(a){const r=await fetch(`${API}?action=${a}&token=${encodeURIComponent(tok())}`);const d=await r.json();if(d.error){localStorage.removeItem('tok');throw new Error(d.error)}return d}
-async function post(op,data){const r=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({token:tok(),op,data})});return r.json()}
+async function get(a){const r=await fetch(`${API}?action=${a}&token=${encodeURIComponent(tokn())}`);const d=await r.json();if(d.error){localStorage.removeItem('tok');throw new Error(d.error)}return d}
+async function post(op,data){const r=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({token:tokAdm(),op,data})});return r.json()}
 function say(t,bad){$('msg').textContent=t;$('msg').style.color=bad?'var(--rd)':'var(--gr)'}
 function render(){
  $('st').textContent='Hari ini '+Y.today+', sisa hari kerja bulan ini: '+Y.sisa;
@@ -65,7 +65,7 @@ function fillPp(){$('pp').innerHTML=opt(Object.keys(M.ulp[$('pu').value]||{}))}
 async function load(){try{[M,Y]=await Promise.all([quick('master'),get('yantek')]);
  if(!$('jr').options.length){$('jr').innerHTML=opt(M.regu);fillUlp();fillPu();$('jt').value=Y.today}render()}
  catch(e){$('st').textContent=e.message||'Gagal terhubung. Periksa URL API dan deploy ulang Apps Script.'}}
-async function act(op,data,ok){say('Menyimpan…');const r=await post(op,data);if(r.error)return say(r.error,1);say(ok);await load()}
+async function act(op,data,ok){say('Menyimpan…');const r=await post(op,data);if(r.error){if(/Token/.test(r.error))localStorage.removeItem('tok_admin');return say(r.error,1)};say(ok);await load()}
 $('pu').onchange=fillPp;$('sp').onclick=()=>act('penugasan',{regu:$('pr').value,ulp:$('pu').value,peny:$('pp').value,target:$('pt').value},'Target disimpan.');
 $('ju').onchange=fillPeny;$('jp').onchange=fillSec;
 $('pv').onclick=()=>{wk.setDate(wk.getDate()-7);render()};$('nx').onclick=()=>{wk.setDate(wk.getDate()+7);render()};
