@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Jadwal Yantek</title><link rel="stylesheet" href="style.css"><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#14232E"><script src="config.js"></script><script src="api.js"></script></head><body>
+<header><div><h1>Jadwal dan target regu Yantek</h1><div class="m" id="st" style="color:#B8C4CC">Memuat…</div></div>
+<nav><a href="index.html">Dashboard</a><a href="temuan.html">Temuan</a><a href="peta.html">Peta</a><a href="korelasi.html">Korelasi</a><a href="vendor.html">Pelaksana ROW</a></nav></header>
+<main>
+<section class="wide"><h2>Papan regu bulan ini</h2><div id="bd"></div></section>
+<section class="wide"><h2>Kalender minggu <span id="wl"></span></h2>
+<p><button id="pv">Minggu lalu</button> <button id="nx">Minggu depan</button></p>
+<div style="overflow-x:auto"><table id="cal"></table></div><p class="m">Klik jadwal untuk membatalkan.</p></section>
+<section><h2>Tambah jadwal</h2><div class="f">
+<div><label for="jt">Tanggal</label><input type="date" id="jt"></div>
+<div><label for="jr">Regu</label><select id="jr"></select></div>
+<div><label for="ju">ULP</label><select id="ju"></select></div>
+<div><label for="jp">Penyulang</label><select id="jp"></select></div>
+<div><label for="js">Section</label><select id="js"></select></div>
+<div><label for="jm">Metode</label><select id="jm"><option>Visual</option><option>Visual ROW</option><option>Mandorline ULP</option><option>Mandorline UP3</option><option>Thermovision</option><option>Ultrasonic</option><option>Drone</option></select></div>
+<div><label for="jk">Target kms</label><input type="number" id="jk" step="0.1" min="0"></div></div>
+<button id="sj">Simpan jadwal</button></section>
+<section><h2>Isi realisasi</h2><div class="f">
+<div><label for="rj">Jadwal</label><select id="rj"></select></div>
+<div><label for="rk">Realisasi kms</label><input type="number" id="rk" step="0.1" min="0"></div>
+<div><label for="rt">Temuan</label><input id="rt"></div>
+<div><label for="rc">Catatan</label><input id="rc"></div></div>
+<button id="sr">Simpan realisasi</button></section>
+<section><h2>Atur target regu</h2><div class="f">
+<div><label for="pr">Regu</label><input id="pr" list="rl"><datalist id="rl"></datalist></div>
+<div><label for="pu">ULP</label><select id="pu"></select></div>
+<div><label for="pp">Penyulang</label><select id="pp"></select></div>
+<div><label for="pt">Target bulanan (kms)</label><input type="number" id="pt" step="0.1" min="0"></div></div>
+<button id="sp">Simpan target</button></section>
+<section class="wide"><p id="msg" role="status"></p></section>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const monday=d=>{d=new Date(d);d.setDate(d.getDate()-(d.getDay()+6)%7);d.setHours(0,0,0,0);return d};
+const col=p=>p>=100?'var(--gr)':p>=70?'var(--yl)':'var(--rd)';
+const opt=(a,f)=>a.map(x=>`<option value="${esc(f?f(x)[0]:x)}">${esc(f?f(x)[1]:x)}</option>`).join('');
+let M,Y,wk=monday(new Date());
+const tok=()=>localStorage.getItem('tok')||(t=>{if(t)localStorage.setItem('tok',t);return t})(prompt('Masukkan token akses'));
+async function get(a){const r=await fetch(`${API}?action=${a}&token=${encodeURIComponent(tok())}`);const d=await r.json();if(d.error){localStorage.removeItem('tok');throw new Error(d.error)}return d}
+async function post(op,data){const r=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({token:tok(),op,data})});return r.json()}
+function say(t,bad){$('msg').textContent=t;$('msg').style.color=bad?'var(--rd)':'var(--gr)'}
+function render(){
+ $('st').textContent='Hari ini '+Y.today+', sisa hari kerja bulan ini: '+Y.sisa;
+ $('bd').innerHTML=Y.regu.length?Y.regu.map(r=>{const p=r.target?Math.round(r.real/r.target*100):0;
+  const td=Y.jadwal.filter(j=>j.regu===r.n&&j.tgl===Y.today&&j.st!=='Batal');
+  return `<div class="row" style="grid-template-columns:150px 1fr 52px"><span>${esc(r.n)}</span><div class="bar"><i style="width:${Math.min(p,100)}%;background:${col(p)}"></i></div><b>${p}%</b></div>
+  <p class="m">Real ${r.real} dari ${r.target} kms. Saran target harian: <b>${r.saran} kms</b>. Hari ini: ${td.length?td.map(j=>esc((j.sec||j.peny)+' '+j.kms+' kms'+(j.st==='Selesai'?' (selesai)':''))).join(', '):'belum ada jadwal'}</p>`}).join('')
+  :'<p class="m">Belum ada penugasan. Isi tab PENUGASAN_YANTEK di spreadsheet.</p>';
+ const days=[...Array(7)].map((_,i)=>{const d=new Date(wk);d.setDate(d.getDate()+i);return d});
+ $('wl').textContent=iso(days[0])+' s.d. '+iso(days[6]);
+ $('cal').innerHTML='<tr><th>Regu</th>'+days.map(d=>`<th>${['Min','Sen','Sel','Rab','Kam','Jum','Sab'][d.getDay()]} ${d.getDate()}</th>`).join('')+'</tr>'+
+  M.regu.map(r=>`<tr><td><b>${esc(r)}</b></td>`+days.map(d=>`<td>`+Y.jadwal.filter(j=>j.regu===r&&j.tgl===iso(d)&&j.st!=='Batal').map(j=>`<span class="it ${j.st==='Selesai'?'ok':''}" data-id="${esc(j.id)}">${esc(j.sec||j.peny)}<br>${j.kms} kms</span>`).join('')+'</td>').join('')+'</tr>').join('');
+ const open=Y.jadwal.filter(j=>j.st==='Terjadwal'&&j.tgl<=Y.today);
+ $('rj').innerHTML=open.length?opt(open,j=>[j.id,`${j.tgl} ${j.regu} ${j.peny} ${j.sec||''}`]):'<option value="">Tidak ada jadwal terbuka</option>';
+}
+function fillUlp(){const u=Object.keys(M.ulp);$('ju').innerHTML=opt(u);fillPeny()}
+function fillPeny(){$('jp').innerHTML=opt(Object.keys(M.ulp[$('ju').value]||{}));fillSec()}
+function fillSec(){$('js').innerHTML='<option value="">(seluruh penyulang)</option>'+opt(((M.ulp[$('ju').value]||{})[$('jp').value])||[])}
+function fillPu(){$('pu').innerHTML=opt(Object.keys(M.ulp));$('rl').innerHTML=opt(M.regu);fillPp()}
+function fillPp(){$('pp').innerHTML=opt(Object.keys(M.ulp[$('pu').value]||{}))}
+async function load(){try{[M,Y]=await Promise.all([quick('master'),get('yantek')]);
+ if(!$('jr').options.length){$('jr').innerHTML=opt(M.regu);fillUlp();fillPu();$('jt').value=Y.today}render()}
+ catch(e){$('st').textContent=e.message||'Gagal terhubung. Periksa URL API dan deploy ulang Apps Script.'}}
+async function act(op,data,ok){say('Menyimpan…');const r=await post(op,data);if(r.error)return say(r.error,1);say(ok);await load()}
+$('pu').onchange=fillPp;$('sp').onclick=()=>act('penugasan',{regu:$('pr').value,ulp:$('pu').value,peny:$('pp').value,target:$('pt').value},'Target disimpan.');
+$('ju').onchange=fillPeny;$('jp').onchange=fillSec;
+$('pv').onclick=()=>{wk.setDate(wk.getDate()-7);render()};$('nx').onclick=()=>{wk.setDate(wk.getDate()+7);render()};
+$('sj').onclick=()=>act('jadwal',{tgl:$('jt').value,regu:$('jr').value,ulp:$('ju').value,peny:$('jp').value,sec:$('js').value,met:$('jm').value,kms:$('jk').value},'Jadwal disimpan.');
+$('sr').onclick=()=>act('realisasi',{id:$('rj').value,real:$('rk').value,temuan:$('rt').value,catatan:$('rc').value},'Realisasi disimpan.');
+$('cal').onclick=e=>{const i=e.target.closest('.it');if(i&&confirm('Batalkan jadwal ini?'))act('batal',{id:i.dataset.id},'Jadwal dibatalkan.')};
+load();
+</script></body></html>

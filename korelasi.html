@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Korelasi dan peringatan</title><link rel="stylesheet" href="style.css"><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#14232E"><script src="config.js"></script><script src="api.js"></script>
+<style>.al{margin:6px 0;padding:6px 10px;border-left:5px solid}.merah{border-color:var(--rd);background:#FBEDEC}.kuning{border-color:var(--yl);background:#FFF6DB}</style></head><body>
+<header><div><h1>Korelasi kegiatan dan gangguan, peringatan</h1><div class="m" id="st" style="color:#B8C4CC">Memuat…</div></div>
+<nav><a href="index.html">Dashboard</a><a href="petugas.html">Jadwal Yantek</a><a href="temuan.html">Temuan</a><a href="peta.html">Peta</a><a href="vendor.html">Pelaksana ROW</a></nav><button id="rf">Perbarui sekarang</button></header>
+<main>
+<section class="wide"><h2>Peringatan otomatis</h2><div id="al"></div></section>
+<section class="wide"><h2>Gangguan sebelum dan sesudah ROW terakhir</h2><div id="bs"></div></section>
+<section><h2>Penyulang berkegiatan tinggi vs rendah</h2><div id="kl"></div></section>
+<section class="wide"><h2>Kegiatan dan gangguan per penyulang (90 hari terakhir)</h2><div style="overflow-x:auto"><table id="py"></table></div></section>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const rows=(a,f)=>a.map(x=>'<tr>'+f(x).map(c=>`<td>${c}</td>`).join('')+'</tr>').join('');
+function render(d){
+ $('st').textContent=d.ada?d.total+' data gangguan tercatat':'Tab GANGGUAN masih kosong';
+ $('al').innerHTML=d.alerts.length?d.alerts.map(a=>`<p class="al ${a.l}"><b>${a.l==='merah'?'Penting':'Perhatian'}:</b> ${esc(a.t)}</p>`).join(''):'<p class="m">Tidak ada peringatan saat ini.</p>';
+ const r=d.ringkas;
+ if(!d.ada||!d.ba.length)$('bs').innerHTML='<p class="m">Belum cukup data. Dibutuhkan gangguan tercatat minimal 60 hari sebelum dan 30 hari sesudah eksekusi ROW terakhir pada penyulang.</p>';
+ else{const dl=r.sb>0?Math.round((r.sb-r.sd)/r.sb*100):null;
+  $('bs').innerHTML=`<p>Dari ${r.n} penyulang, jumlah gangguan per 30 hari: sebelum <b>${r.sb}</b>, sesudah <b>${r.sd}</b>${dl===null?'':dl>=0?` (turun ${dl}%)`:` (naik ${-dl}%)`}.</p><p class="m">Ini korelasi, bukan bukti sebab-akibat. Cuaca dan penyebab lain ikut berpengaruh, jadi nilai semakin berarti bila data makin panjang.</p><div style="overflow-x:auto"><table><tr><th>Penyulang</th><th>ULP</th><th>ROW terakhir</th><th>Gangguan 60 hari sebelum</th><th>Gangguan sesudah</th><th>Per 30 hari (sebelum)</th><th>Per 30 hari (sesudah)</th></tr>${rows(d.ba,x=>[esc(x.p),esc(x.u),x.tgl,x.sb,x.sd,x.rs,x.ra])}</table></div>`}
+ const k=d.kel,g=(n,x)=>`<tr><td>${n}</td><td>${x.n}</td><td>${x.gg}</td><td><b>${x.rata}</b></td><td>${x.pohon}</td></tr>`;
+ $('kl').innerHTML=`<table><tr><th>Kelompok</th><th>Penyulang</th><th>Gangguan</th><th>Rata-rata</th><th>Karena pohon</th></tr>${g('Eksekusi lebih dari '+k.thr+' titik',k.tinggi)}${g('Eksekusi '+k.thr+' titik atau kurang',k.rendah)}</table><p class="m">Dibagi di nilai tengah jumlah eksekusi temuan 90 hari terakhir.</p>`;
+ $('py').innerHTML='<tr><th>Penyulang</th><th>ULP</th><th>Eksekusi pohon</th><th>Eksekusi lain</th><th>Hari inspeksi</th><th>Gangguan</th><th>Gangguan 90 hari sebelumnya</th><th>Karena pohon</th></tr>'+rows(d.peny,x=>[esc(x.p),esc(x.u),x.row,x.lain,x.insp,'<b>'+x.gg+'</b>',x.pv,x.pohon]);
+}
+async function load(f){try{await swr('korelasi',render,f)}catch(e){$('st').textContent=e.message||'Gagal terhubung. Periksa URL API dan deploy ulang Apps Script.'}}
+$('rf').onclick=()=>load(true);load();
+</script></body></html>

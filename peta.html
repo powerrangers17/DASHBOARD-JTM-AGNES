@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Peta temuan dan rute</title><link rel="stylesheet" href="style.css"><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#14232E">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script><script src="config.js"></script><script src="api.js"></script></head><body>
+<header><div><h1>Peta temuan terbuka dan rute regu</h1><div class="m" id="st" style="color:#B8C4CC">Memuat…</div></div>
+<nav><a href="index.html">Dashboard</a><a href="petugas.html">Jadwal Yantek</a><a href="temuan.html">Temuan</a><a href="korelasi.html">Korelasi</a><a href="vendor.html">Pelaksana ROW</a></nav></header>
+<main><section class="wide">
+<div class="f"><div><label for="dt">Tanggal rute</label><input type="date" id="dt"></div>
+<div><label for="rg">Regu</label><select id="rg"><option value="">(semua regu)</option></select></div>
+<div><label for="tl">Titik temuan</label><select id="tl"><option value="1">Tampilkan</option><option value="0">Sembunyikan</option></select></div></div>
+<div id="map" style="height:68vh;border:1px solid #D5DCE1" role="img" aria-label="Peta temuan terbuka dan rute regu"></div>
+<p class="m">Lingkaran = kelompok temuan terbuka (±400 m), warna menurut prioritas tertinggi: merah Eskalasi/Emergency, oranye Prioritas 1, kuning Prioritas 2, biru Prioritas 3, abu-abu belum ditetapkan. Garis putus-putus dan angka = urutan section jadwal regu (titik section = posisi tengah temuan berkoordinat).</p>
+<p id="ms" class="m"></p></section></main>
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const PC=['#8A99A5','#0B6BB5','#F5B800','#E07B22','#C23B33'],RC=['#0B6BB5','#1E8A5A','#7A3FB5','#B5651D','#D6336C','#2B8A8A'];
+const map=L.map('map',{preferCanvas:true}).setView([-5.0,119.5],10);
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'© OpenStreetMap'}).addTo(map);
+const gl=L.layerGroup().addTo(map),rl=L.layerGroup().addTo(map);let S={},P={},Y={jadwal:[]},G=[];
+const tok=()=>localStorage.getItem('tok')||(t=>{if(t)localStorage.setItem('tok',t);return t})(prompt('Masukkan token akses'));
+async function get(a){const r=await fetch(`${API}?action=${a}&token=${encodeURIComponent(tok())}`);const d=await r.json();if(d.error){localStorage.removeItem('tok');throw new Error(d.error)}return d}
+function grid(){gl.clearLayers();if($('tl').value!=='1')return;
+ G.forEach(g=>L.circleMarker([g[0],g[1]],{radius:Math.min(4+Math.sqrt(g[2])*1.6,20),color:PC[g[3]],fillColor:PC[g[3]],fillOpacity:.55,weight:1}).bindPopup(g[2]+' temuan terbuka').addTo(gl))}
+function route(){rl.clearLayers();const dt=$('dt').value,rg=$('rg').value,by={},miss=[];
+ const js=Y.jadwal.filter(j=>j.tgl===dt&&j.st!=='Batal'&&(!rg||j.regu===rg));
+ js.forEach(j=>{const c=S[j.ulp+'|'+j.peny+'|'+j.sec]||P[j.ulp+'|'+j.peny];if(!c){miss.push(j.regu+': '+(j.sec||j.peny));return}(by[j.regu]=by[j.regu]||[]).push([c,j])});
+ Object.keys(by).forEach((r,ri)=>{const col=RC[ri%RC.length];L.polyline(by[r].map(x=>x[0]),{color:col,weight:3,dashArray:'6 6'}).addTo(rl);
+  by[r].forEach((x,i)=>L.marker(x[0],{icon:L.divIcon({className:'',iconSize:[24,24],html:`<div style="background:${col};color:#fff;width:24px;height:24px;border-radius:50%;text-align:center;line-height:20px;font-weight:700;border:2px solid #fff">${i+1}</div>`})}).bindPopup(esc(r+': '+(x[1].sec||x[1].peny)+' ('+x[1].kms+' kms)')).addTo(rl))});
+ $('ms').textContent=miss.length?'Tidak ada titik di peta untuk: '+miss.join('; ')+' (belum ada temuan berkoordinat di section ini).':(js.length?'':'Tidak ada jadwal pada tanggal ini.')}
+(async()=>{try{
+ $('st').textContent='Memuat… (pertama kali bisa sampai 30 detik)';
+ [G,S]=await Promise.all([quick('peta'),quick('sec')]);
+ try{Y=await swr('yantek',()=>{})}catch(e){}
+ const a={};Object.keys(S).forEach(k=>{const q=k.split('|'),p=q[0]+'|'+q[1];(a[p]=a[p]||[]).push(S[k])});
+ Object.keys(a).forEach(p=>P[p]=[a[p].reduce((s,x)=>s+x[0],0)/a[p].length,a[p].reduce((s,x)=>s+x[1],0)/a[p].length]);
+ G.sort((x,y)=>x[3]-y[3]);
+ $('rg').innerHTML+=[...new Set(Y.jadwal.map(j=>j.regu))].sort().map(r=>`<option>${esc(r)}</option>`).join('');
+ $('dt').value=Y.today||new Date().toISOString().slice(0,10);
+ if(G.length)map.fitBounds(G.map(g=>[g[0],g[1]]));
+ $('st').textContent=G.length+' kelompok temuan terbuka di peta';grid();route();
+}catch(e){$('st').textContent=e.message||'Gagal terhubung. Periksa URL API dan deploy ulang Apps Script.'}})();
+$('tl').onchange=grid;$('dt').onchange=route;$('rg').onchange=route;
+</script></body></html>

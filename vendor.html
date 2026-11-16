@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kinerja pelaksana ROW</title><link rel="stylesheet" href="style.css"><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#14232E"><script src="config.js"></script><script src="api.js"></script></head><body>
+<header><div><h1>Kinerja pelaksana ROW</h1><div class="m" id="st" style="color:#B8C4CC">Memuat…</div></div>
+<nav><a href="index.html">Dashboard</a><a href="petugas.html">Jadwal Yantek</a><a href="temuan.html">Temuan</a><a href="peta.html">Peta</a><a href="korelasi.html">Korelasi</a></nav><button id="rf">Perbarui sekarang</button></header>
+<main>
+<section class="wide"><h2>Pelaksana</h2><div style="overflow-x:auto"><table id="vd"></table></div>
+<p class="m">Status mengikuti kolom STATUS ROW di ASET JTM. "Update terakhir" dari kolom PROGRESS ROW (tanggal terbaru per pelaksana). Pelaksana tanpa update lebih dari 14 hari ditandai.</p></section>
+<section class="wide"><h2>Status ROW per ULP</h2><div style="overflow-x:auto"><table id="ul"></table></div></section>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const rows=(a,f)=>a.map(x=>'<tr>'+f(x).map(c=>`<td>${c}</td>`).join('')+'</tr>').join('');
+const bar=(p,c)=>`<div class="bar"><i style="width:${Math.min(p,100)}%;background:${c}"></i></div>`;
+const col=p=>p>=80?'var(--gr)':p>=50?'var(--yl)':'var(--rd)';
+function render(d){
+ $('st').textContent='Diperbarui '+d.updated;
+ $('vd').innerHTML='<tr><th>Pelaksana</th><th>Section</th><th>Kms</th><th style="width:16%">Sudah update</th><th>Belum tuntas</th><th>Belum update</th><th>Belum terlaksana</th><th>Tebang real/target (titik)</th><th>Rampal (kms)</th><th>Update terakhir</th></tr>'+
+  rows(d.vendor,x=>{const p=x.sec?Math.round(x.su/x.sec*100):0,t=x.tt?Math.round(x.rt/x.tt*100)+'%':'-',
+   h=x.hari==null?'belum ada':x.hari+' hari'+(x.hari>14?' <b>(perlu update)</b>':'');
+   return [esc(x.n),x.sec,x.kms,bar(p,col(p))+p+'%',x.bn,x.bu,x.bt,`${x.rt}/${x.tt} (${t})`,x.ramp,h]});
+ $('ul').innerHTML='<tr><th>ULP</th><th>Sudah update</th><th>Belum tuntas</th><th>Belum update</th><th>Belum terlaksana</th></tr>'+rows(d.ulp,x=>[esc(x.n),x.su,x.bn,x.bu,x.bt]);
+}
+async function load(f){try{await swr('vendor',render,f)}catch(e){$('st').textContent=e.message||'Gagal terhubung. Periksa URL API dan deploy ulang Apps Script.'}}
+$('rf').onclick=()=>load(true);load();
+</script></body></html>

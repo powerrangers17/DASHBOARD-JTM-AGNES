@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tindak lanjut temuan</title><link rel="stylesheet" href="style.css"><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#14232E"><script src="config.js"></script><script src="api.js"></script></head><body>
+<header><div><h1>Tindak lanjut temuan dan risiko penyulang</h1><div class="m" id="st" style="color:#B8C4CC">Memuat…</div></div>
+<nav><a href="index.html">Dashboard</a><a href="petugas.html">Jadwal Yantek</a><a href="peta.html">Peta</a><a href="korelasi.html">Korelasi</a><a href="vendor.html">Pelaksana ROW</a></nav><button id="rf">Muat ulang data</button></header>
+<main>
+<section class="wide"><h2>Status temuan per ULP</h2><div style="overflow-x:auto"><table id="tu"></table></div></section>
+<section><h2>Prioritas temuan yang belum selesai</h2><div id="pr"></div></section>
+<section><h2>Umur temuan yang belum selesai</h2><div id="um"></div></section>
+<section><h2>Jenis temuan yang belum selesai</h2><table id="jn"></table></section>
+<section class="wide"><h2>Penyulang paling berisiko</h2><p class="m">Skor = 60% temuan terbuka (dibobot prioritas) + 40% rata-rata skor section (lama sejak ROW dan Tier I, kerapatan pohon).</p><div style="overflow-x:auto"><table id="py"></table></div></section>
+<section class="wide"><h2>Temuan mendesak belum selesai (Eskalasi, Emergency, Prioritas 1)</h2><div style="overflow-x:auto"><table id="ur"></table></div></section>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const bar=(v,m,c)=>`<div class="bar"><i style="width:${m?Math.round(v/m*100):0}%;background:${c}"></i></div>`;
+const PL=['Belum ditetapkan','Prioritas 3 (>30 hari)','Prioritas 2 (14-30 hari)','Prioritas 1 (<14 hari)','Eskalasi / Emergency'];
+const PC=['#8A99A5','var(--bl)','var(--yl)','#E07B22','var(--rd)'];
+const rows=(a,f)=>a.map(x=>'<tr>'+f(x).map(c=>`<td>${c}</td>`).join('')+'</tr>').join('');
+function render(d){
+ $('st').textContent=`Diperbarui ${d.updated}. ${d.total} temuan, ${d.invalid} koordinat di luar wilayah (diabaikan di peta).`;
+ $('tu').innerHTML='<tr><th>ULP</th><th>Temuan</th><th style="width:22%">Selesai</th><th>Menunggu jadwal</th><th>Menunggu eksekusi</th><th>Menunggu jadwal padam</th><th>Menunggu ijin ROW</th><th>Belum divalidasi UP3</th></tr>'+
+  rows(d.ulp,x=>{const p=x.tot?Math.round(x.sel/x.tot*100):0;return [esc(x.n),x.tot,bar(x.sel,x.tot,p>=80?'var(--gr)':p>=50?'var(--yl)':'var(--rd)')+p+'%',x.jad,x.eks,x.pad,x.ijin,x.bv]});
+ const mp=Math.max(...d.prio,1);
+ $('pr').innerHTML=[4,3,2,1,0].map(i=>`<div class="row"><span>${PL[i]}</span>${bar(d.prio[i],mp,PC[i])}<b>${d.prio[i]}</b></div>`).join('');
+ const mu=Math.max(...d.umur,1),UL=['0-30 hari','31-90 hari','91-180 hari','>180 hari'];
+ $('um').innerHTML=d.umur.map((v,i)=>`<div class="row"><span>${UL[i]}</span>${bar(v,mu,i>2?'var(--rd)':i>1?'#E07B22':'var(--bl)')}<b>${v}</b></div>`).join('');
+ $('jn').innerHTML=rows(d.jenis,x=>[esc(x.n),'<b>'+x.c+'</b>']);
+ $('py').innerHTML='<tr><th>Skor</th><th>ULP</th><th>Penyulang</th><th>Temuan terbuka (berbobot)</th><th>Skor section rata-rata</th><th>Gangguan 90 hari</th></tr>'+
+  rows(d.peny,x=>['<b>'+x.sk+'</b>',esc(x.u),esc(x.p),x.w,x.sec,x.gg]);
+ $('ur').innerHTML='<tr><th>Prioritas</th><th>ULP</th><th>Penyulang</th><th>Section</th><th>Jenis</th><th>Status</th><th>Umur (hari)</th></tr>'+
+  rows(d.urgent,x=>[PL[x.pr],esc(x.u),esc(x.p),esc(x.s),esc(x.j),esc(x.ex),x.age]);
+}
+async function load(fresh){try{await swr('temuan',render,fresh)}catch(e){$('st').textContent=e.message||'Gagal terhubung. Periksa URL API dan deploy ulang Apps Script.'}}
+$('rf').onclick=()=>load(true);load();
+</script></body></html>
