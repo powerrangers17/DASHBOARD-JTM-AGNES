@@ -55,3 +55,5 @@ section.nosc,section.banner{max-height:none}section.nosc{overflow:visible}
 .th{width:64px;height:64px;object-fit:cover;border-radius:10px;margin:0 4px 4px 0}
 .bd{display:inline-block;padding:2px 10px;border-radius:99px;font-size:.75rem;font-weight:600;white-space:nowrap}.bd.ok{background:#D6F0E6;color:#0B6E4F}.bd.w{background:#FDEFD2;color:#8A5A00}.bd.x{background:#FBE0E4;color:#A02A3C}
 td .ghost{padding:4px 10px;font-size:.75rem;margin:2px 4px 0 0}
+.per{display:flex;gap:8px;align-items:center;margin-left:auto}.per+.acts{margin-left:0}.per select{width:auto;padding:8px 12px;font-size:.85rem;background:#fff}
+.pl{font-weight:400;color:var(--mut);font-size:.85rem}

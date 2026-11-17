@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Riwayat pekerjaan</title><link rel="stylesheet" href="style.css"><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#14232E"><script src="config.js"></script><script src="api.js"></script></head><body>
+<title>Riwayat pekerjaan</title><link rel="stylesheet" href="style.css"><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#14232E"><script src="config.js"></script><script src="api.js"></script></head><body data-periode>
 <header><div><h1>Riwayat pekerjaan dan evidence</h1><div class="m" id="st">Memuat…</div></div><button id="rf">Muat ulang</button></header>
 <main>
 <section class="wide"><div class="f"><div><label for="d1">Dari tanggal</label><input type="date" id="d1"></div><div><label for="d2">Sampai tanggal</label><input type="date" id="d2"></div>
@@ -38,6 +38,7 @@ async function load(){try{$('st').textContent='Memuat…';
 $('rw').onclick=async e=>{const b=e.target.closest('[data-v]');if(!b)return;const[id,status]=b.dataset.v.split('|');
  const r=await(await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({token:tokAdm(),op:'verifikasi',data:{id,status}})})).json();
  if(r.error){if(/Token/.test(r.error))localStorage.removeItem('tok_admin');$('st').textContent=r.error}else load()};
-const t=new Date();$('d2').value=iso(t);$('d1').value=iso(new Date(t-6*864e5));
+function setRange(){const q=periode(),y=+q.y;if(!q.y){$('d1').value=$('d2').value='';return}const a=q.m?new Date(y,+q.m-1,1):new Date(y,0,1),b=q.m?new Date(y,+q.m,0):new Date(y,11,31);$('d1').value=iso(a);$('d2').value=iso(b)}
+setRange();PER.cb.push(()=>{setRange();load()});
 ['d1','d2','tp'].forEach(i=>$(i).onchange=load);$('pl').onchange=render;$('rf').onclick=load;load();
 </script></body></html>

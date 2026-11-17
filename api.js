@@ -20,6 +20,10 @@ users:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7
 cam:'<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>',clock:'<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
 bolt:'<path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>',shield:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>'};
 const ic=n=>`<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[n]}</svg>`;
+const BLN=['Semua bulan','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+const PER={cb:[],get(){const n=new Date(),y=localStorage.getItem('per_y'),m=localStorage.getItem('per_m');return{y:y===null?String(n.getFullYear()):y,m:m===null?String(n.getMonth()+1).padStart(2,'0'):m}}};
+const periode=()=>PER.get();
+const plabel=()=>{const p=PER.get();return p.y?(p.m?BLN[+p.m]+' '+p.y:'Tahun '+p.y):(p.m?BLN[+p.m]+' (semua tahun)':'Semua periode')};
 const PAGES=[['index.html','grid','Dashboard'],['petugas.html','cal','Jadwal Yantek'],['lapor.html','cam','Lapor Kerja'],['riwayat.html','clock','Riwayat'],['temuan.html','list','Temuan'],['peta.html','pin','Peta'],['korelasi.html','chart','Korelasi'],['vendor.html','users','Pelaksana ROW']];
 addEventListener('DOMContentLoaded',()=>{
  const h=document.querySelector('header'),m=document.querySelector('main');if(!h||!m)return;
@@ -30,6 +34,9 @@ addEventListener('DOMContentLoaded',()=>{
  mk('Cetak',()=>print());
  mk('Unduh CSV',()=>{const o=[];document.querySelectorAll('table').forEach(t=>{[...t.rows].forEach(r=>o.push([...r.cells].map(c=>'"'+c.innerText.replace(/"/g,'""').trim()+'"').join(',')));o.push('')});
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+o.join('\n')],{type:'text/csv'}));a.download=(document.title||'data')+'.csv';a.click()});
+ if(document.body.hasAttribute('data-periode')){const p=PER.get(),n=new Date().getFullYear(),w=document.createElement('div');w.className='per';
+  w.innerHTML='<select id="per-y" aria-label="Tahun"><option value="">Semua tahun</option>'+[0,1,2,3].map(i=>`<option${String(n-i)===p.y?' selected':''}>${n-i}</option>`).join('')+'</select><select id="per-m" aria-label="Bulan">'+BLN.map((b,i)=>{const v=i?String(i).padStart(2,'0'):'';return `<option value="${v}"${v===p.m?' selected':''}>${b}</option>`}).join('')+'</select>';
+  h.appendChild(w);w.querySelectorAll('select').forEach(s=>s.onchange=()=>{localStorage.setItem('per_y',w.querySelector('#per-y').value);localStorage.setItem('per_m',w.querySelector('#per-m').value);PER.cb.forEach(f=>f())})}
  h.appendChild(acts);
  const g=new Date().getHours(),hi=g<11?'Selamat pagi':g<15?'Selamat siang':g<18?'Selamat sore':'Selamat malam';
  h.firstElementChild.insertAdjacentHTML('afterbegin','<div class="hi">'+hi+'</div>');

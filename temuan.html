@@ -1,15 +1,14 @@
 <!doctype html>
 <html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Tindak lanjut temuan</title><link rel="stylesheet" href="style.css"><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#14232E"><script src="config.js"></script><script src="api.js"></script></head><body>
-<header><div><h1>Tindak lanjut temuan dan risiko penyulang</h1><div class="m" id="st" style="color:#B8C4CC">Memuat…</div></div>
-<nav><a href="index.html">Dashboard</a><a href="petugas.html">Jadwal Yantek</a><a href="peta.html">Peta</a><a href="korelasi.html">Korelasi</a><a href="vendor.html">Pelaksana ROW</a></nav><button id="rf">Muat ulang data</button></header>
+<title>Tindak lanjut temuan</title><link rel="stylesheet" href="style.css"><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#14232E"><script src="config.js"></script><script src="api.js"></script></head><body data-periode>
+<header><div><h1>Tindak lanjut temuan dan risiko penyulang</h1><div class="m" id="st">Memuat…</div></div><button id="rf">Muat ulang data</button></header>
 <main>
-<section class="wide"><h2>Status temuan per ULP</h2><div style="overflow-x:auto"><table id="tu"></table></div></section>
-<section><h2>Prioritas temuan yang belum selesai</h2><div id="pr"></div></section>
-<section><h2>Umur temuan yang belum selesai</h2><div id="um"></div></section>
-<section><h2>Jenis temuan yang belum selesai</h2><table id="jn"></table></section>
-<section class="wide"><h2>Penyulang paling berisiko</h2><p class="m">Skor = 60% temuan terbuka (dibobot prioritas) + 40% rata-rata skor section (lama sejak ROW dan Tier I, kerapatan pohon).</p><div style="overflow-x:auto"><table id="py"></table></div></section>
-<section class="wide"><h2>Temuan mendesak belum selesai (Eskalasi, Emergency, Prioritas 1)</h2><div style="overflow-x:auto"><table id="ur"></table></div></section>
+<section class="wide"><h2>Status temuan per ULP <span class="pl"></span></h2><p class="m">Periode mengikuti tanggal inspeksi saat temuan dibuat.</p><table id="tu"></table></section>
+<section><h2>Prioritas temuan yang belum selesai <span class="pl"></span></h2><div id="pr"></div></section>
+<section><h2>Umur temuan yang belum selesai <span class="pl"></span></h2><div id="um"></div></section>
+<section><h2>Jenis temuan yang belum selesai <span class="pl"></span></h2><table id="jn"></table></section>
+<section class="wide"><h2>Penyulang paling berisiko (kondisi saat ini)</h2><p class="m">Skor = 60% temuan terbuka (dibobot prioritas) + 40% rata-rata skor section (lama sejak ROW dan Tier I, kerapatan pohon). Tidak mengikuti filter periode.</p><table id="py"></table></section>
+<section class="wide"><h2>Temuan mendesak belum selesai <span class="pl"></span></h2><p class="m">Eskalasi, Emergency, dan Prioritas 1. Menampilkan 25 teratas pada periode terpilih.</p><table id="ur"></table></section>
 </main>
 <script>
 const $=id=>document.getElementById(id);
@@ -17,21 +16,27 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;',
 const bar=(v,m,c)=>`<div class="bar"><i style="width:${m?Math.round(v/m*100):0}%;background:${c}"></i></div>`;
 const PL=['Belum ditetapkan','Prioritas 3 (>30 hari)','Prioritas 2 (14-30 hari)','Prioritas 1 (<14 hari)','Eskalasi / Emergency'];
 const PC=['#8A99A5','var(--bl)','var(--yl)','#E07B22','var(--rd)'];
-const rows=(a,f)=>a.map(x=>'<tr>'+f(x).map(c=>`<td>${c}</td>`).join('')+'</tr>').join('');
+const rows=(a,f)=>a.length?a.map(x=>'<tr>'+f(x).map(c=>`<td>${c}</td>`).join('')+'</tr>').join(''):'<tr><td class="m">Tidak ada data pada periode ini.</td></tr>';
+let D=null;
 function render(d){
- $('st').textContent=`Diperbarui ${d.updated}. ${d.total} temuan, ${d.invalid} koordinat di luar wilayah (diabaikan di peta).`;
- $('tu').innerHTML='<tr><th>ULP</th><th>Temuan</th><th style="width:22%">Selesai</th><th>Menunggu jadwal</th><th>Menunggu eksekusi</th><th>Menunggu jadwal padam</th><th>Menunggu ijin ROW</th><th>Belum divalidasi UP3</th></tr>'+
-  rows(d.ulp,x=>{const p=x.tot?Math.round(x.sel/x.tot*100):0;return [esc(x.n),x.tot,bar(x.sel,x.tot,p>=80?'var(--gr)':p>=50?'var(--yl)':'var(--rd)')+p+'%',x.jad,x.eks,x.pad,x.ijin,x.bv]});
- const mp=Math.max(...d.prio,1);
- $('pr').innerHTML=[4,3,2,1,0].map(i=>`<div class="row"><span>${PL[i]}</span>${bar(d.prio[i],mp,PC[i])}<b>${d.prio[i]}</b></div>`).join('');
- const mu=Math.max(...d.umur,1),UL=['0-30 hari','31-90 hari','91-180 hari','>180 hari'];
- $('um').innerHTML=d.umur.map((v,i)=>`<div class="row"><span>${UL[i]}</span>${bar(v,mu,i>2?'var(--rd)':i>1?'#E07B22':'var(--bl)')}<b>${v}</b></div>`).join('');
- $('jn').innerHTML=rows(d.jenis,x=>[esc(x.n),'<b>'+x.c+'</b>']);
- $('py').innerHTML='<tr><th>Skor</th><th>ULP</th><th>Penyulang</th><th>Temuan terbuka (berbobot)</th><th>Skor section rata-rata</th><th>Gangguan 90 hari</th></tr>'+
-  rows(d.peny,x=>['<b>'+x.sk+'</b>',esc(x.u),esc(x.p),x.w,x.sec,x.gg]);
- $('ur').innerHTML='<tr><th>Prioritas</th><th>ULP</th><th>Penyulang</th><th>Section</th><th>Jenis</th><th>Status</th><th>Umur (hari)</th></tr>'+
-  rows(d.urgent,x=>[PL[x.pr],esc(x.u),esc(x.p),esc(x.s),esc(x.j),esc(x.ex),x.age]);
+ if(d)D=d;d=D;if(!d)return;
+ if(!d.bym){$('st').textContent='Data masih versi lama. Jalankan pasangTrigger() di Apps Script, lalu muat ulang halaman.';return}
+ const p=periode(),L=plabel(),per=k=>(!p.y||k.slice(0,4)===p.y)&&(!p.m||k.slice(5)===p.m);
+ const ks=Object.keys(d.bym).filter(k=>k==='NA'?(!p.y&&!p.m):per(k)),U={},P=[0,0,0,0,0],UM=[0,0,0,0],J={};
+ ks.forEach(k=>{const b=d.bym[k];Object.entries(b.u).forEach(([n,v])=>{const o=U[n]=U[n]||[0,0,0,0,0,0,0];v.forEach((x,i)=>o[i]+=x)});b.p.forEach((x,i)=>P[i]+=x);b.um.forEach((x,i)=>UM[i]+=x);Object.entries(b.j).forEach(([n,c])=>J[n]=(J[n]||0)+c)});
+ document.querySelectorAll('.pl').forEach(e=>e.textContent='- '+L);
+ $('st').textContent=`Diperbarui ${d.updated}. ${d.total} temuan seluruhnya, ${d.invalid} koordinat di luar wilayah. Periode: ${L}`;
+ const names=Object.keys(U).sort(),tot=[0,0,0,0,0,0,0];names.forEach(n=>U[n].forEach((x,i)=>tot[i]+=x));
+ const line=(n,v)=>{const q=v[0]?Math.round(v[1]/v[0]*100):0;return [n,v[0],bar(v[1],v[0],q>=80?'var(--gr)':q>=50?'var(--yl)':'var(--rd)')+q+'%',v[2],v[3],v[4],v[5],v[6]]};
+ $('tu').innerHTML='<tr><th>ULP</th><th>Temuan</th><th style="width:22%">Selesai</th><th>Menunggu jadwal</th><th>Menunggu eksekusi</th><th>Menunggu jadwal padam</th><th>Menunggu ijin ROW</th><th>Belum divalidasi UP3</th></tr>'+rows(names.concat(names.length?['Total']:[]),n=>line(n==='Total'?'<b>Total</b>':esc(n),n==='Total'?tot:U[n]));
+ const mp=Math.max(...P,1);$('pr').innerHTML=[4,3,2,1,0].map(i=>`<div class="row"><span>${PL[i]}</span>${bar(P[i],mp,PC[i])}<b>${P[i]}</b></div>`).join('');
+ const mu=Math.max(...UM,1),UL=['0-30 hari','31-90 hari','91-180 hari','>180 hari'];
+ $('um').innerHTML=UM.map((v,i)=>`<div class="row"><span>${UL[i]}</span>${bar(v,mu,i>2?'var(--rd)':i>1?'#E07B22':'var(--bl)')}<b>${v}</b></div>`).join('');
+ $('jn').innerHTML=rows(Object.entries(J).sort((a,b)=>b[1]-a[1]).slice(0,8),x=>[esc(x[0]),'<b>'+x[1]+'</b>']);
+ $('py').innerHTML='<tr><th>Skor</th><th>ULP</th><th>Penyulang</th><th>Temuan terbuka (berbobot)</th><th>Skor section rata-rata</th><th>Gangguan 90 hari</th></tr>'+rows(d.peny,x=>['<b>'+x.sk+'</b>',esc(x.u),esc(x.p),x.w,x.sec,x.gg]);
+ const ug=d.urgent.filter(x=>x.t?per(x.t.slice(0,7)):(!p.y&&!p.m)).slice(0,25);
+ $('ur').innerHTML='<tr><th>Prioritas</th><th>ULP</th><th>Penyulang</th><th>Section</th><th>Jenis</th><th>Status</th><th>Tgl inspeksi</th><th>Umur (hari)</th></tr>'+rows(ug,x=>[PL[x.pr],esc(x.u),esc(x.p),esc(x.s),esc(x.j),esc(x.ex),x.t||'-',x.age]);
 }
-async function load(fresh){try{await swr('temuan',render,fresh)}catch(e){$('st').textContent=e.message||'Gagal terhubung. Periksa URL API dan deploy ulang Apps Script.'}}
-$('rf').onclick=()=>load(true);load();
+async function load(f){try{await swr('temuan',render,f)}catch(e){$('st').textContent=e.message||'Gagal terhubung. Periksa URL API dan deploy ulang Apps Script.'}}
+$('rf').onclick=()=>load(true);PER.cb.push(()=>render());load();
 </script></body></html>

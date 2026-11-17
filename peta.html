@@ -2,13 +2,13 @@
 <html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Peta temuan dan rute</title><link rel="stylesheet" href="style.css"><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#14232E">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script><script src="config.js"></script><script src="api.js"></script></head><body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script><script src="config.js"></script><script src="api.js"></script></head><body data-periode>
 <header><div><h1>Peta temuan dan rute pelaksana</h1><div class="m" id="st">Memuat…</div></div></header>
 <main><section class="wide">
 <div class="f"><div><label for="d1">Dari tanggal</label><input type="date" id="d1"></div><div><label for="d2">Sampai tanggal</label><input type="date" id="d2"></div>
 <div><label for="rg">Regu / pihak ketiga</label><select id="rg"><option value="">(semua pelaksana)</option></select></div>
 <div><label for="md">Tampilkan</label><select id="md"><option value="all">Rencana dan realisasi</option><option value="plan">Rencana saja</option><option value="real">Realisasi saja</option></select></div>
-<div><label for="tl">Titik temuan</label><select id="tl"><option value="1">Tampilkan</option><option value="0">Sembunyikan</option></select></div></div>
+<div><label for="tl">Titik temuan (tahun inspeksi mengikuti filter tahun)</label><select id="tl"><option value="1">Tampilkan</option><option value="0">Sembunyikan</option></select></div></div>
 <p><button id="pv" class="ghost">‹ Hari sebelumnya</button> <button id="nx" class="ghost">Hari berikutnya ›</button></p>
 <div id="map" style="height:64vh;border:1px solid #D5DCE1" role="img" aria-label="Peta temuan terbuka dan rute pelaksana"></div>
 <div id="lg" class="m" style="margin-top:10px"></div>
@@ -22,8 +22,10 @@ const PC=['#8A99A5','#0F8B8D','#F0A93B','#E07B22','#E5586B'],RC=['#0F8B8D','#6A5
 const map=L.map('map',{preferCanvas:true}).setView([-5.0,119.5],10);
 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'© OpenStreetMap'}).addTo(map);
 const gl=L.layerGroup().addTo(map),rl=L.layerGroup().addTo(map);let S={},P={},Y={jadwal:[]},G=[],LP=[],NM={};
+const yr=()=>{const y=periode().y;return y?+y%100:0};
+function setRange(){const q=periode(),y=+q.y;if(!q.y)return;const a=q.m?new Date(y,+q.m-1,1):new Date(y,0,1),b=q.m?new Date(y,+q.m,0):new Date(y,11,31);$('d1').value=iso(a);$('d2').value=iso(b)}
 function grid(){gl.clearLayers();if($('tl').value!=='1')return;
- G.forEach(g=>L.circleMarker([g[0],g[1]],{radius:Math.min(4+Math.sqrt(g[2])*1.6,20),color:PC[g[3]],fillColor:PC[g[3]],fillOpacity:.45,weight:1}).bindPopup(g[2]+' temuan terbuka').addTo(gl))}
+ G.filter(g=>!yr()||g[4]===yr()).forEach(g=>L.circleMarker([g[0],g[1]],{radius:Math.min(4+Math.sqrt(g[2])*1.6,20),color:PC[g[3]],fillColor:PC[g[3]],fillOpacity:.45,weight:1}).bindPopup(g[2]+' temuan terbuka').addTo(gl))}
 async function lap(){try{const r=await(await fetch(`${API}?action=laporan&token=${encodeURIComponent(tokn())}&dari=${$('d1').value}&sampai=${$('d2').value}`)).json();LP=r.data||[]}catch(e){LP=[]}names();draw()}
 function names(){const cur=$('rg').value,n=new Set([...Object.keys(NM),...Y.jadwal.map(j=>j.regu),...LP.map(x=>x.pel)]);
  $('rg').innerHTML='<option value="">(semua pelaksana)</option>'+[...n].sort().map(x=>`<option${x===cur?' selected':''}>${esc(x)}</option>`).join('')}
@@ -52,5 +54,6 @@ function geser(n){const d=new Date($('d1').value);d.setDate(d.getDate()+n);$('d1
  if(G.length)map.fitBounds(G.map(g=>[g[0],g[1]]));
  $('st').textContent=G.length+' kelompok temuan terbuka di peta';grid();await lap();
 }catch(e){$('st').textContent=e.message||'Gagal terhubung. Periksa URL API dan deploy ulang Apps Script.'}})();
+PER.cb.push(()=>{setRange();grid();lap()});
 $('tl').onchange=grid;$('md').onchange=draw;$('rg').onchange=draw;$('d1').onchange=lap;$('d2').onchange=lap;$('pv').onclick=()=>geser(-1);$('nx').onclick=()=>geser(1);
 </script></body></html>

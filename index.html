@@ -1,49 +1,57 @@
 <!doctype html>
 <html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Dashboard JTM</title>
-<link rel="stylesheet" href="style.css"><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#14232E"><script src="config.js"></script><script src="api.js"></script></head><body>
-<header><div><h1>Dashboard JTM</h1><div class="m" id="st" style="color:#B8C4CC">Memuat…</div></div>
-<nav><a href="petugas.html">Jadwal Yantek</a><a href="temuan.html">Temuan</a><a href="peta.html">Peta</a><a href="korelasi.html">Korelasi</a><a href="vendor.html">Pelaksana ROW</a></nav><button id="rf">Muat ulang data</button></header>
+<title>Dashboard JTM</title><link rel="stylesheet" href="style.css"><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#14232E"><script src="config.js"></script><script src="api.js"></script></head><body data-periode>
+<header><div><h1>Dashboard JTM</h1><div class="m" id="st">Memuat…</div></div><button id="rf">Muat ulang data</button></header>
 <main>
 <div class="kpis wide" id="kp"></div>
 <section class="banner wide" id="bn"></section>
-<section><h2>Hari tanpa gangguan</h2><div id="gg"></div></section>
-<section><h2>Capaian Mandorline bulan ini (per ULP)</h2><div id="bm"></div><h2 style="margin-top:18px">Capaian Yantek bulan ini (per ULP)</h2><div id="by"></div></section>
-<section><h2>Capaian per Mandorline</h2><div id="bp"></div></section>
-<section><h2>Gangguan bulan ini</h2><div id="gd"></div></section>
-<section class="wide"><h2>Section paling berisiko (lama sejak ROW dan Tier I, kerapatan pohon)</h2><div style="overflow-x:auto"><table id="rk"></table></div></section>
+<section><h2>Capaian Mandorline per ULP <span class="pl"></span></h2><div id="bm"></div></section>
+<section><h2>Capaian Yantek per ULP <span class="pl"></span></h2><div id="by"></div></section>
+<section><h2>Gangguan <span class="pl"></span></h2><div id="gd"></div></section>
+<section class="wide"><h2>Tren bulanan</h2><p class="m">Menampilkan semua bulan pada tahun yang dipilih (atau semua tahun). Bulan terpilih ditebalkan.</p><table id="tr"></table></section>
+<section><h2>Capaian per Mandorline (kumulatif)</h2><p class="m">Dari tab LM MANDORLINE, tidak mengikuti filter periode.</p><div id="bp"></div></section>
+<section><h2>Hari tanpa gangguan</h2><div id="hk"></div></section>
+<section class="wide"><h2>Section paling berisiko (kondisi saat ini)</h2><table id="rk"></table></section>
 <section class="wide"><h2>Teks laporan WhatsApp</h2><textarea id="wa" readonly></textarea><p><button id="cp">Salin teks</button></p></section>
 </main>
 <script>
 const $=id=>document.getElementById(id);
-const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const pct=(r,t)=>t>0?Math.round(r/t*100):0;
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const r2=x=>Math.round(x*100)/100,pct=(r,t)=>t>0?Math.round(r/t*100):0;
 const col=p=>p>=100?'var(--gr)':p>=70?'var(--yl)':'var(--rd)';
-const bars=(a,t,r)=>a.length?a.map(x=>{const p=pct(x[r],x[t]);return `<div class="row"><span>${esc(x.n)}</span><div class="bar"><i style="width:${Math.min(p,100)}%;background:${col(p)}"></i></div><b>${p}%</b></div>`}).join(''):'<p class="m">Belum ada data bulan ini.</p>';
+const bars=(a,t,r)=>a.length?a.map(x=>{const p=pct(x[r],x[t]);return `<div class="row"><span>${esc(x.n)}</span><div class="bar"><i style="width:${Math.min(p,100)}%;background:${col(p)}"></i></div><b>${p}%</b></div>`}).join(''):'<p class="m">Belum ada data pada periode ini.</p>';
+const topn=o=>Object.entries(o).sort((a,b)=>b[1]-a[1]).slice(0,5).map(e=>`<tr><td>${esc(e[0])}</td><td><b>${e[1]}</b></td></tr>`).join('')||'<tr><td class="m">Tidak ada</td></tr>';
+let D=null;
+function agg(d){const p=periode(),u={},g={c:0,m:0,cs:{},ul:{},fd:{}};
+ Object.keys(d.bln).filter(k=>(!p.y||k.slice(0,4)===p.y)&&(!p.m||k.slice(5)===p.m)).forEach(k=>{const b=d.bln[k];
+  Object.entries(b.u).forEach(([n,v])=>{const o=u[n]=u[n]||[0,0,0,0];v.forEach((x,i)=>o[i]+=x)});
+  g.c+=b.g.c;g.m+=b.g.m;['cs','ul','fd'].forEach(f=>Object.entries(b.g[f]).forEach(([n,c])=>g[f][n]=(g[f][n]||0)+c))});
+ return{u,g}}
 function render(d){
- $('st').textContent='Diperbarui '+d.updated;
- const S=k=>d.ulp.reduce((s,x)=>s+x[k],0),G=d.gg,T=(i,l,v,u,fg,bg)=>`<div class="tile"><div class="ico" style="background:${bg};color:${fg}">${ic(i)}</div><div><small>${l}</small><b>${v}<span>${u}</span></b></div></div>`;
- $('kp').innerHTML=T('chart','Capaian Mandorline',pct(S('rM'),S('tM')),'%','#6A55D8','#E6E1FA')+T('users','Capaian Yantek',pct(S('rY'),S('tY')),'%','#D6336C','#FBE0EA')+T('shield','Gangguan bulan ini',G.total?G.count:'-','','#D9822B','#FCEBD3')+T('bolt','Hari tanpa gangguan',G.hari==null?'-':G.hari,'','#0B6E73','#D3EEEC');
- $('bm').innerHTML=bars(d.ulp,'tM','rM');$('by').innerHTML=bars(d.ulp,'tY','rY');
+ if(d)D=d;d=D;if(!d)return;
+ if(!d.bln){$('st').textContent='Data masih versi lama. Jalankan pasangTrigger() di Apps Script, lalu muat ulang halaman.';return}
+ const A=agg(d),G=d.gg,p=periode(),L=plabel(),ulp=Object.keys(A.u).sort().map(n=>({n,tM:r2(A.u[n][0]),rM:r2(A.u[n][1]),tY:r2(A.u[n][2]),rY:r2(A.u[n][3])}));
+ $('st').textContent='Diperbarui '+d.updated+' | Periode: '+L;
+ document.querySelectorAll('.pl').forEach(e=>e.textContent='- '+L);
+ const S=k=>ulp.reduce((s,x)=>s+x[k],0),T=(i,l,v,u,fg,bg)=>`<div class="tile"><div class="ico" style="background:${bg};color:${fg}">${ic(i)}</div><div><small>${l}</small><b>${v}<span>${u}</span></b></div></div>`;
+ $('kp').innerHTML=T('chart','Capaian Mandorline',pct(S('rM'),S('tM')),'%','#6A55D8','#E6E1FA')+T('users','Capaian Yantek',pct(S('rY'),S('tY')),'%','#D6336C','#FBE0EA')+T('shield','Gangguan periode ini',G.total?A.g.c:'-','','#D9822B','#FCEBD3')+T('bolt','Hari tanpa gangguan',G.hari==null?'-':G.hari,'','#0B6E73','#D3EEEC');
+ $('bm').innerHTML=bars(ulp,'tM','rM');$('by').innerHTML=bars(ulp,'tY','rY');
+ $('gd').innerHTML=G.total?`<p><b>${A.g.c}</b> gangguan, total padam <b>${r2(A.g.m)}</b> menit</p><table><tr><th>Penyebab</th><th></th></tr>${topn(A.g.cs)}<tr><th>ULP</th><th></th></tr>${topn(A.g.ul)}<tr><th>Penyulang terbanyak</th><th></th></tr>${topn(A.g.fd)}</table>`:'<p class="m">Belum ada data. Isi tab GANGGUAN di spreadsheet.</p>';
+ $('hk').innerHTML=G.total?`<div class="sign"><b>${G.hari}</b>hari sejak gangguan terakhir</div>`:'<p class="m">Belum ada data gangguan.</p>';
+ const ks=[...new Set(Object.keys(d.bln).concat(Object.keys(d.eks||{})))].filter(k=>!p.y||k.slice(0,4)===p.y).sort(),sv=(b,i)=>Object.values(b.u).reduce((s,v)=>s+v[i],0);
+ $('tr').innerHTML='<tr><th>Bulan</th><th>Gangguan</th><th>Menit padam</th><th>Eksekusi pohon</th><th>Eksekusi lain</th><th>Mandorline</th><th>Yantek</th></tr>'+(ks.map(k=>{const b=d.bln[k]||{u:{},g:{c:0,m:0}},e=(d.eks||{})[k]||[0,0],nm=BLN[+k.slice(5)]+' '+k.slice(0,4),h=k.slice(5)===p.m;
+  return '<tr><td>'+(h?'<b>'+nm+'</b>':nm)+`</td><td>${b.g.c}</td><td>${r2(b.g.m)}</td><td>${e[0]}</td><td>${e[1]}</td><td>${pct(sv(b,1),sv(b,0))}%</td><td>${pct(sv(b,3),sv(b,2))}%</td></tr>`}).join('')||'<tr><td class="m">Belum ada data.</td></tr>');
  $('bp').innerHTML=bars(d.mdl,'t','r');
- const g=d.gg;
- if(!g.total){$('gg').innerHTML='<p class="m">Belum ada data. Isi tab GANGGUAN di spreadsheet.</p>';$('gd').innerHTML='<p class="m">Isi tab GANGGUAN untuk melihat tren dan penyebab.</p>';}
- else{
-  $('gg').innerHTML=`<div class="sign"><b>${g.hari}</b>hari sejak gangguan terakhir</div><p class="m">Bulan lalu: ${g.prev} gangguan</p>`;
-  const l=(a)=>a.length?a.map(x=>`<tr><td>${esc(x.n)}</td><td><b>${x.c}</b></td></tr>`).join(''):'<tr><td class="m">Tidak ada</td></tr>';
-  $('gd').innerHTML=`<p><b>${g.count}</b> gangguan, total padam <b>${g.menit}</b> menit</p><table><tr><th>Penyebab</th><th></th></tr>${l(g.cause)}<tr><th>Penyulang terbanyak</th><th></th></tr>${l(g.feeder)}</table>`;
- }
- $('rk').innerHTML='<tr><th>Skor</th><th>ULP</th><th>Penyulang</th><th>Section</th><th>Hari sejak ROW</th><th>Hari sejak Tier I</th></tr>'+
-  d.risk.map(x=>`<tr><td><b>${x.sk}</b></td><td>${esc(x.u)}</td><td>${esc(x.p)}</td><td>${esc(x.s)}</td><td>${x.row}</td><td>${x.t1}</td></tr>`).join('');
- const L=['*Capaian Inspeksi s.d. hari ini ('+d.month+')*',''];
- d.ulp.forEach(x=>L.push(`> ${x.n}: Mandorline ${x.rM}/${x.tM} kms (${pct(x.rM,x.tM)}%), Yantek ${x.rY}/${x.tY} kms (${pct(x.rY,x.tY)}%)`));
- if(g.total)L.push('',`Gangguan bulan ini: ${g.count} kali. Hari tanpa gangguan: ${g.hari}`);
- $('wa').value=L.join('\n');
+ $('rk').innerHTML='<tr><th>Skor</th><th>ULP</th><th>Penyulang</th><th>Section</th><th>Hari sejak ROW</th><th>Hari sejak Tier I</th></tr>'+d.risk.map(x=>`<tr><td><b>${x.sk}</b></td><td>${esc(x.u)}</td><td>${esc(x.p)}</td><td>${esc(x.s)}</td><td>${x.row}</td><td>${x.t1}</td></tr>`).join('');
+ const W=['*Capaian Inspeksi - '+L+'*',''];
+ ulp.forEach(x=>W.push(`> ${x.n}: Mandorline ${x.rM}/${x.tM} kms (${pct(x.rM,x.tM)}%), Yantek ${x.rY}/${x.tY} kms (${pct(x.rY,x.tY)}%)`));
+ if(G.total)W.push('',`Gangguan: ${A.g.c} kali. Hari tanpa gangguan: ${G.hari}`);
+ $('wa').value=W.join('\n');
 }
-async function load(fresh){try{await swr('all',render,fresh)}catch(e){$('st').textContent=e.message||'Gagal terhubung. Periksa URL API dan deploy ulang Apps Script.'}}
+async function load(f){try{await swr('all',render,f)}catch(e){$('st').textContent=e.message||'Gagal terhubung. Periksa URL API dan deploy ulang Apps Script.'}}
 $('rf').onclick=()=>load(true);
 $('cp').onclick=()=>navigator.clipboard.writeText($('wa').value).then(()=>{$('cp').textContent='Tersalin'});
-load();
+PER.cb.push(()=>render());load();
 swr('korelasi',k=>{const n=k.alerts.length,m=k.alerts.filter(a=>a.l==='merah').length;
  $('bn').innerHTML=`<div><small>PERINGATAN OTOMATIS</small><h3>${n?n+' hal perlu perhatian ('+m+' penting)':'Tidak ada peringatan saat ini'}</h3><p>${n?esc(k.alerts[0].t):'Semua indikator dalam batas aman.'}</p></div><a class="btn" href="korelasi.html">Lihat peringatan</a>`}).catch(()=>{});
 </script></body></html>
