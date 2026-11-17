@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lapor kerja</title><link rel="stylesheet" href="style.css"><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#14232E"><script src="config.js"></script><script src="api.js"></script></head><body>
+<header><div><h1>Lapor kerja</h1><div class="m" id="st">Isi laporan pekerjaan lapangan beserta foto. Foto tersimpan otomatis di Google Drive.</div></div></header>
+<main>
+<section class="wide"><h2>Data pekerjaan</h2>
+<div class="f"><div><label for="tp">Pelaksana</label><select id="tp"><option>Pihak pertama</option><option>Pihak ketiga</option></select></div>
+<div><label for="pl">Nama regu / vendor</label><input id="pl" list="pll" autocomplete="off"><datalist id="pll"></datalist></div>
+<div><label for="tg">Tanggal pekerjaan</label><input type="date" id="tg"></div>
+<div><label for="jn">Jenis pekerjaan</label><select id="jn"><option>Inspeksi</option><option>ROW - Perampalan</option><option>ROW - Penebangan</option><option>Pengangkutan sampah ROW</option><option>Penggantian isolator</option><option>Pemasangan PEBI</option><option>Perbaikan temuan</option><option>Lainnya</option></select></div></div>
+<div class="f"><div><label for="lu">ULP</label><select id="lu"></select></div><div><label for="lp">Penyulang</label><select id="lp"></select></div>
+<div><label for="ls">Section</label><select id="ls"></select></div><div><label for="jd">Jadwal terkait (opsional)</label><select id="jd"></select></div></div>
+<div class="f"><div><label for="vl">Volume</label><input type="number" id="vl" step="0.01" min="0"></div>
+<div><label for="sa">Satuan</label><select id="sa"><option>kms</option><option>titik</option></select></div>
+<div><label for="ct">Catatan</label><input id="ct"></div>
+<div><label>Lokasi (GPS)</label><button type="button" id="gp" class="ghost">Ambil lokasi saya</button><div class="m" id="gt"></div></div></div></section>
+<section><h2>Foto sebelum</h2><input type="file" id="fb" accept="image/*" multiple><div class="pv" id="pb"></div><p class="m">Maksimal 3 foto.</p></section>
+<section><h2>Foto sesudah</h2><input type="file" id="fa" accept="image/*" multiple><div class="pv" id="pa"></div><p class="m">Maksimal 3 foto.</p></section>
+<section class="wide"><button id="kr">Kirim laporan</button><p id="msg" role="status"></p></section>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const opt=a=>a.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('');
+const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+let M,Y={jadwal:[]},VN=[],GPS=null;const FB=[],FA=[];
+function say(t,bad){$('msg').textContent=t;$('msg').style.color=bad?'var(--rd)':'var(--gr)'}
+function fillNama(){$('pll').innerHTML=opt($('tp').value==='Pihak pertama'?M.regu:VN);fillJd()}
+function fillJd(){const p=$('pl').value.trim(),a=Y.jadwal.filter(j=>j.regu===p&&j.st==='Terjadwal');
+ $('jd').innerHTML='<option value="">(tidak ada)</option>'+a.map(j=>`<option value="${esc(j.id)}">${esc(j.tgl+' '+(j.sec||j.peny)+' ('+j.kms+' kms)')}</option>`).join('')}
+function fillPeny(){$('lp').innerHTML=opt(Object.keys(M.ulp[$('lu').value]||{}));fillSec()}
+function fillSec(){$('ls').innerHTML='<option value="">(seluruh penyulang)</option>'+opt((M.ulp[$('lu').value]||{})[$('lp').value]||[])}
+function kecil(f){return new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const k=Math.min(1,1280/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=im.width*k;c.height=im.height*k;c.getContext('2d').drawImage(im,0,0,c.width,c.height);ok(c.toDataURL('image/jpeg',.7))};im.onerror=no;im.src=r.result};r.onerror=no;r.readAsDataURL(f)})}
+function pilih(inp,arr,box){inp.onchange=async()=>{arr.length=0;box.innerHTML='';for(const f of [...inp.files].slice(0,3)){try{const d=await kecil(f);arr.push(d);box.insertAdjacentHTML('beforeend',`<img src="${d}" alt="Pratinjau foto">`)}catch(e){}}}}
+pilih($('fb'),FB,$('pb'));pilih($('fa'),FA,$('pa'));
+$('gp').onclick=()=>navigator.geolocation?navigator.geolocation.getCurrentPosition(p=>{GPS=[p.coords.latitude,p.coords.longitude];$('gt').textContent=GPS.map(x=>x.toFixed(5)).join(', ')},()=>{$('gt').textContent='Lokasi tidak bisa diambil. Aktifkan izin lokasi.'},{enableHighAccuracy:true,timeout:15000}):0;
+$('kr').onclick=async()=>{
+ if(!$('pl').value.trim()||$('vl').value==='')return say('Isi nama regu/vendor dan volume pekerjaan.',1);
+ if(!FB.length&&!FA.length)return say('Lampirkan minimal satu foto.',1);
+ const tk=localStorage.getItem('tok_lapor')||prompt('Masukkan token LAPOR (dari admin)');if(!tk)return;
+ $('kr').disabled=true;say('Mengunggah foto, jangan tutup halaman…');
+ try{const r=await(await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({token:tk,op:'lapor',data:{tgl:$('tg').value,tipe:$('tp').value,pel:$('pl').value.trim(),jenis:$('jn').value,ulp:$('lu').value,peny:$('lp').value,sec:$('ls').value,vol:$('vl').value,sat:$('sa').value,cat:$('ct').value,lat:GPS?GPS[0]:'',lon:GPS?GPS[1]:'',jid:$('jd').value,fb:FB,fa:FA}})})).json();
+  if(r.error){if(/Token/.test(r.error))localStorage.removeItem('tok_lapor');say(r.error,1)}
+  else{localStorage.setItem('tok_lapor',tk);say('Laporan tersimpan. Terima kasih.');FB.length=FA.length=0;$('pb').innerHTML=$('pa').innerHTML='';$('fb').value=$('fa').value=$('vl').value=$('ct').value=''}
+ }catch(e){say('Gagal terhubung. Periksa sinyal lalu coba lagi.',1)}
+ $('kr').disabled=false};
+$('tp').onchange=fillNama;$('pl').oninput=fillJd;$('lu').onchange=fillPeny;$('lp').onchange=fillSec;
+(async()=>{try{const t=new Date(),m=new Date(t-14*864e5);$('tg').value=iso(t);$('tg').max=iso(t);$('tg').min=iso(m);
+ M=await quick('master');$('lu').innerHTML=opt(Object.keys(M.ulp));fillPeny();
+ try{VN=(await quick('vendor')).vendor.map(x=>x.n).filter(n=>n.charAt(0)!=='(')}catch(e){}
+ fillNama();try{Y=await swr('yantek',()=>{});fillJd()}catch(e){}
+}catch(e){$('st').textContent=e.message||'Gagal memuat daftar area. Periksa koneksi.'}})();
+</script></body></html>

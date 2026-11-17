@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Riwayat pekerjaan</title><link rel="stylesheet" href="style.css"><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#14232E"><script src="config.js"></script><script src="api.js"></script></head><body>
+<header><div><h1>Riwayat pekerjaan dan evidence</h1><div class="m" id="st">Memuat…</div></div><button id="rf">Muat ulang</button></header>
+<main>
+<section class="wide"><div class="f"><div><label for="d1">Dari tanggal</label><input type="date" id="d1"></div><div><label for="d2">Sampai tanggal</label><input type="date" id="d2"></div>
+<div><label for="tp">Pelaksana</label><select id="tp"><option value="">Semua</option><option>Pihak pertama</option><option>Pihak ketiga</option></select></div>
+<div><label for="pl">Nama</label><select id="pl"><option value="">Semua</option></select></div></div></section>
+<div class="kpis wide" id="kp"></div>
+<section><h2>Rekap per pelaksana</h2><table id="rp"></table></section>
+<section><h2>Realisasi per tanggal</h2><table id="rt"></table></section>
+<section class="wide"><h2>Riwayat</h2><table id="rw"></table></section>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const rows=(a,f)=>a.length?a.map(x=>'<tr>'+f(x).map(c=>`<td>${c}</td>`).join('')+'</tr>').join(''):'<tr><td class="m">Belum ada data pada rentang ini.</td></tr>';
+let D=[];
+const thumb=(a,l)=>a.map(id=>`<a href="https://drive.google.com/file/d/${esc(id)}/view" target="_blank" rel="noopener"><img class="th" loading="lazy" title="${l}" alt="Foto ${l}" src="https://drive.google.com/thumbnail?id=${esc(id)}&sz=w200"></a>`).join('');
+const bd=s=>`<span class="bd ${s==='Terverifikasi'?'ok':s==='Ditolak'?'x':'w'}">${esc(s)}</span>`;
+function render(){
+ const pl=$('pl').value,a=D.filter(x=>!pl||x.pel===pl),S=(l,k)=>l.reduce((s,x)=>s+(x.sat==='kms'?x.vol:0),0);
+ const T=(i,l,v)=>`<div class="tile"><div class="ico" style="background:#D3EEEC;color:#0B6E73">${ic(i)}</div><div><small>${l}</small><b>${v}</b></div></div>`;
+ $('kp').innerHTML=T('list','Laporan',a.length)+T('chart','Volume (kms)',Math.round(S(a)*100)/100)+T('users','Pelaksana aktif',new Set(a.map(x=>x.pel)).size)+T('clock','Menunggu verifikasi',a.filter(x=>x.st==='Menunggu verifikasi').length);
+ const g={};a.forEach(x=>{const o=g[x.pel]=g[x.pel]||{n:x.pel,t:x.tipe,c:0,k:0,p:0,l:''};o.c++;if(x.sat==='kms')o.k+=x.vol;else o.p+=x.vol;if(x.tgl>o.l)o.l=x.tgl});
+ $('rp').innerHTML='<tr><th>Pelaksana</th><th>Tipe</th><th>Laporan</th><th>Kms</th><th>Titik</th><th>Terakhir</th></tr>'+rows(Object.values(g).sort((x,y)=>y.c-x.c),o=>[esc(o.n),esc(o.t),o.c,Math.round(o.k*100)/100,o.p,o.l]);
+ const h={};a.forEach(x=>{const o=h[x.tgl]=h[x.tgl]||{d:x.tgl,c:0,p1:0,p3:0};o.c++;if(x.sat==='kms'){if(x.tipe==='Pihak ketiga')o.p3+=x.vol;else o.p1+=x.vol}});
+ $('rt').innerHTML='<tr><th>Tanggal</th><th>Laporan</th><th>Pihak pertama (kms)</th><th>Pihak ketiga (kms)</th></tr>'+rows(Object.values(h).sort((x,y)=>y.d.localeCompare(x.d)),o=>[o.d,o.c,Math.round(o.p1*100)/100,Math.round(o.p3*100)/100]);
+ $('rw').innerHTML='<tr><th>Tanggal</th><th>Pelaksana</th><th>Jenis</th><th>Area</th><th>Volume</th><th>Status</th><th>Evidence</th></tr>'+rows(a,x=>[x.tgl,esc(x.pel)+'<div class="m">'+esc(x.tipe)+'</div>',esc(x.jenis)+(x.cat?'<div class="m">'+esc(x.cat)+'</div>':''),esc(x.ulp+' / '+x.peny+(x.sec?' / '+x.sec:'')),x.vol+' '+esc(x.sat),bd(x.st)+(x.st==='Menunggu verifikasi'?`<div><button class="ghost" data-v="${esc(x.id)}|Terverifikasi">Setujui</button><button class="ghost" data-v="${esc(x.id)}|Ditolak">Tolak</button></div>`:''),thumb(x.fb,'Sebelum')+thumb(x.fa,'Sesudah')]);
+}
+async function load(){try{$('st').textContent='Memuat…';
+ const q=`${API}?action=laporan&token=${encodeURIComponent(tokn())}&dari=${$('d1').value}&sampai=${$('d2').value}${$('tp').value?'&tipe='+encodeURIComponent($('tp').value):''}`;
+ const d=await(await fetch(q)).json();if(d.error)throw new Error(d.error);D=d.data;
+ const cur=$('pl').value,ns=[...new Set(D.map(x=>x.pel))].sort();$('pl').innerHTML='<option value="">Semua</option>'+ns.map(n=>`<option${n===cur?' selected':''}>${esc(n)}</option>`).join('');
+ $('st').textContent=d.n+' laporan'+(d.n>=500?' (menampilkan 500 terbaru, persempit rentang tanggal)':'');render();
+}catch(e){$('st').textContent=e.message||'Gagal terhubung. Periksa URL API dan deploy ulang Apps Script.'}}
+$('rw').onclick=async e=>{const b=e.target.closest('[data-v]');if(!b)return;const[id,status]=b.dataset.v.split('|');
+ const r=await(await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({token:tokAdm(),op:'verifikasi',data:{id,status}})})).json();
+ if(r.error){if(/Token/.test(r.error))localStorage.removeItem('tok_admin');$('st').textContent=r.error}else load()};
+const t=new Date();$('d2').value=iso(t);$('d1').value=iso(new Date(t-6*864e5));
+['d1','d2','tp'].forEach(i=>$(i).onchange=load);$('pl').onchange=render;$('rf').onclick=load;load();
+</script></body></html>

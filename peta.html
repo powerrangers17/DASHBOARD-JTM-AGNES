@@ -3,43 +3,54 @@
 <title>Peta temuan dan rute</title><link rel="stylesheet" href="style.css"><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#14232E">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script><script src="config.js"></script><script src="api.js"></script></head><body>
-<header><div><h1>Peta temuan terbuka dan rute regu</h1><div class="m" id="st" style="color:#B8C4CC">Memuat…</div></div>
-<nav><a href="index.html">Dashboard</a><a href="petugas.html">Jadwal Yantek</a><a href="temuan.html">Temuan</a><a href="korelasi.html">Korelasi</a><a href="vendor.html">Pelaksana ROW</a></nav></header>
+<header><div><h1>Peta temuan dan rute pelaksana</h1><div class="m" id="st">Memuat…</div></div></header>
 <main><section class="wide">
-<div class="f"><div><label for="dt">Tanggal rute</label><input type="date" id="dt"></div>
-<div><label for="rg">Regu</label><select id="rg"><option value="">(semua regu)</option></select></div>
+<div class="f"><div><label for="d1">Dari tanggal</label><input type="date" id="d1"></div><div><label for="d2">Sampai tanggal</label><input type="date" id="d2"></div>
+<div><label for="rg">Regu / pihak ketiga</label><select id="rg"><option value="">(semua pelaksana)</option></select></div>
+<div><label for="md">Tampilkan</label><select id="md"><option value="all">Rencana dan realisasi</option><option value="plan">Rencana saja</option><option value="real">Realisasi saja</option></select></div>
 <div><label for="tl">Titik temuan</label><select id="tl"><option value="1">Tampilkan</option><option value="0">Sembunyikan</option></select></div></div>
-<div id="map" style="height:68vh;border:1px solid #D5DCE1" role="img" aria-label="Peta temuan terbuka dan rute regu"></div>
-<p class="m">Lingkaran = kelompok temuan terbuka (±400 m), warna menurut prioritas tertinggi: merah Eskalasi/Emergency, oranye Prioritas 1, kuning Prioritas 2, biru Prioritas 3, abu-abu belum ditetapkan. Garis putus-putus dan angka = urutan section jadwal regu (titik section = posisi tengah temuan berkoordinat).</p>
+<p><button id="pv" class="ghost">‹ Hari sebelumnya</button> <button id="nx" class="ghost">Hari berikutnya ›</button></p>
+<div id="map" style="height:64vh;border:1px solid #D5DCE1" role="img" aria-label="Peta temuan terbuka dan rute pelaksana"></div>
+<div id="lg" class="m" style="margin-top:10px"></div>
+<p class="m">Lingkaran besar = kelompok temuan terbuka (merah Eskalasi/Emergency, oranye Prioritas 1, kuning Prioritas 2, biru Prioritas 3, abu-abu belum ditetapkan). Angka berwarna dan garis putus-putus = rencana jadwal. Kotak centang = pekerjaan yang sudah dilaporkan (klik untuk melihat foto). Posisi memakai GPS laporan bila ada, atau titik tengah section.</p>
 <p id="ms" class="m"></p></section></main>
 <script>
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const PC=['#8A99A5','#0B6BB5','#F5B800','#E07B22','#C23B33'],RC=['#0B6BB5','#1E8A5A','#7A3FB5','#B5651D','#D6336C','#2B8A8A'];
+const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const PC=['#8A99A5','#0F8B8D','#F0A93B','#E07B22','#E5586B'],RC=['#0F8B8D','#6A55D8','#D6336C','#D9822B','#2B6CB0','#7A9A1E','#A0522D','#555'];
 const map=L.map('map',{preferCanvas:true}).setView([-5.0,119.5],10);
 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'© OpenStreetMap'}).addTo(map);
-const gl=L.layerGroup().addTo(map),rl=L.layerGroup().addTo(map);let S={},P={},Y={jadwal:[]},G=[];
-const tok=()=>localStorage.getItem('tok')||(t=>{if(t)localStorage.setItem('tok',t);return t})(prompt('Masukkan token akses'));
-async function get(a){const r=await fetch(`${API}?action=${a}&token=${encodeURIComponent(tok())}`);const d=await r.json();if(d.error){localStorage.removeItem('tok');throw new Error(d.error)}return d}
+const gl=L.layerGroup().addTo(map),rl=L.layerGroup().addTo(map);let S={},P={},Y={jadwal:[]},G=[],LP=[],NM={};
 function grid(){gl.clearLayers();if($('tl').value!=='1')return;
- G.forEach(g=>L.circleMarker([g[0],g[1]],{radius:Math.min(4+Math.sqrt(g[2])*1.6,20),color:PC[g[3]],fillColor:PC[g[3]],fillOpacity:.55,weight:1}).bindPopup(g[2]+' temuan terbuka').addTo(gl))}
-function route(){rl.clearLayers();const dt=$('dt').value,rg=$('rg').value,by={},miss=[];
- const js=Y.jadwal.filter(j=>j.tgl===dt&&j.st!=='Batal'&&(!rg||j.regu===rg));
- js.forEach(j=>{const c=S[j.ulp+'|'+j.peny+'|'+j.sec]||P[j.ulp+'|'+j.peny];if(!c){miss.push(j.regu+': '+(j.sec||j.peny));return}(by[j.regu]=by[j.regu]||[]).push([c,j])});
- Object.keys(by).forEach((r,ri)=>{const col=RC[ri%RC.length];L.polyline(by[r].map(x=>x[0]),{color:col,weight:3,dashArray:'6 6'}).addTo(rl);
-  by[r].forEach((x,i)=>L.marker(x[0],{icon:L.divIcon({className:'',iconSize:[24,24],html:`<div style="background:${col};color:#fff;width:24px;height:24px;border-radius:50%;text-align:center;line-height:20px;font-weight:700;border:2px solid #fff">${i+1}</div>`})}).bindPopup(esc(r+': '+(x[1].sec||x[1].peny)+' ('+x[1].kms+' kms)')).addTo(rl))});
- $('ms').textContent=miss.length?'Tidak ada titik di peta untuk: '+miss.join('; ')+' (belum ada temuan berkoordinat di section ini).':(js.length?'':'Tidak ada jadwal pada tanggal ini.')}
-(async()=>{try{
- $('st').textContent='Memuat… (pertama kali bisa sampai 30 detik)';
+ G.forEach(g=>L.circleMarker([g[0],g[1]],{radius:Math.min(4+Math.sqrt(g[2])*1.6,20),color:PC[g[3]],fillColor:PC[g[3]],fillOpacity:.45,weight:1}).bindPopup(g[2]+' temuan terbuka').addTo(gl))}
+async function lap(){try{const r=await(await fetch(`${API}?action=laporan&token=${encodeURIComponent(tokn())}&dari=${$('d1').value}&sampai=${$('d2').value}`)).json();LP=r.data||[]}catch(e){LP=[]}names();draw()}
+function names(){const cur=$('rg').value,n=new Set([...Object.keys(NM),...Y.jadwal.map(j=>j.regu),...LP.map(x=>x.pel)]);
+ $('rg').innerHTML='<option value="">(semua pelaksana)</option>'+[...n].sort().map(x=>`<option${x===cur?' selected':''}>${esc(x)}</option>`).join('')}
+const pos=(u,p,s,la,lo)=>(la!==''&&la!=null&&!isNaN(la)&&lo!=='')?[+la,+lo]:S[u+'|'+p+'|'+s]||P[u+'|'+p];
+function draw(){rl.clearLayers();const a=$('d1').value,b=$('d2').value,rg=$('rg').value,md=$('md').value,it=[],miss=[];
+ if(md!=='real')Y.jadwal.filter(j=>j.tgl>=a&&j.tgl<=b&&j.st!=='Batal'&&(!rg||j.regu===rg)).forEach(j=>it.push({k:'p',t:j.tgl,pel:j.regu,c:pos(j.ulp,j.peny,j.sec),txt:(j.sec||j.peny)+' ('+j.kms+' kms)'+(j.st==='Selesai'?' - selesai':'')}));
+ if(md!=='plan')LP.filter(x=>!rg||x.pel===rg).forEach(x=>it.push({k:'r',t:x.tgl,pel:x.pel,c:pos(x.ulp,x.peny,x.sec,x.lat,x.lon),txt:x.jenis+' - '+(x.sec||x.peny)+' ('+x.vol+' '+x.sat+')',x:x}));
+ const pel=[...new Set(it.map(i=>i.pel))].sort(),col=n=>RC[pel.indexOf(n)%RC.length],seq={},line={};
+ it.sort((x,y)=>x.t.localeCompare(y.t)).forEach(i=>{if(!i.c){miss.push(i.t+' '+i.pel+': '+i.txt);return}
+  const k=i.pel+'|'+i.t,c=col(i.pel),n=seq[k]=(seq[k]||0)+1;
+  if(i.k==='p'){(line[k]=line[k]||{c:c,p:[]}).p.push(i.c);
+   L.marker(i.c,{icon:L.divIcon({className:'',iconSize:[24,24],html:`<div style="background:${c};color:#fff;width:24px;height:24px;border-radius:50%;text-align:center;line-height:20px;font-weight:700;border:2px solid #fff">${n}</div>`})}).bindPopup(esc(i.t+' | '+i.pel+' | rencana: '+i.txt)).addTo(rl)}
+  else{const ph=(i.x.fb.concat(i.x.fa)).slice(0,2).map(id=>`<img src="https://drive.google.com/thumbnail?id=${esc(id)}&sz=w240" width="110" alt="Foto" style="margin:4px 4px 0 0;border-radius:8px">`).join('');
+   L.marker(i.c,{icon:L.divIcon({className:'',iconSize:[24,24],html:`<div style="background:#fff;color:${c};width:24px;height:24px;border-radius:7px;text-align:center;line-height:20px;font-weight:700;border:3px solid ${c}">✓</div>`})}).bindPopup(esc(i.t+' | '+i.pel+' | '+i.txt+' | '+i.x.st)+'<br>'+ph).addTo(rl)}});
+ Object.values(line).forEach(l=>{if(l.p.length>1)L.polyline(l.p,{color:l.c,weight:3,dashArray:'6 6'}).addTo(rl)});
+ $('lg').innerHTML=pel.map(n=>`<span style="margin-right:14px"><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${col(n)};margin-right:5px"></i>${esc(n)}</span>`).join('');
+ $('ms').textContent=it.length?(miss.length?'Tanpa titik di peta (belum ada GPS atau temuan berkoordinat): '+miss.join('; '):''):'Tidak ada rencana atau laporan pada rentang tanggal dan pelaksana ini.'}
+function geser(n){const d=new Date($('d1').value);d.setDate(d.getDate()+n);$('d1').value=$('d2').value=iso(d);lap()}
+(async()=>{try{$('st').textContent='Memuat…';
  [G,S]=await Promise.all([quick('peta'),quick('sec')]);
  try{Y=await swr('yantek',()=>{})}catch(e){}
+ try{(await quick('vendor')).vendor.forEach(v=>{if(v.n.charAt(0)!=='(')NM[v.n]=1});(await quick('master')).regu.forEach(r=>NM[r]=1)}catch(e){}
  const a={};Object.keys(S).forEach(k=>{const q=k.split('|'),p=q[0]+'|'+q[1];(a[p]=a[p]||[]).push(S[k])});
  Object.keys(a).forEach(p=>P[p]=[a[p].reduce((s,x)=>s+x[0],0)/a[p].length,a[p].reduce((s,x)=>s+x[1],0)/a[p].length]);
- G.sort((x,y)=>x[3]-y[3]);
- $('rg').innerHTML+=[...new Set(Y.jadwal.map(j=>j.regu))].sort().map(r=>`<option>${esc(r)}</option>`).join('');
- $('dt').value=Y.today||new Date().toISOString().slice(0,10);
+ G.sort((x,y)=>x[3]-y[3]);$('d1').value=$('d2').value=Y.today||iso(new Date());
  if(G.length)map.fitBounds(G.map(g=>[g[0],g[1]]));
- $('st').textContent=G.length+' kelompok temuan terbuka di peta';grid();route();
+ $('st').textContent=G.length+' kelompok temuan terbuka di peta';grid();await lap();
 }catch(e){$('st').textContent=e.message||'Gagal terhubung. Periksa URL API dan deploy ulang Apps Script.'}})();
-$('tl').onchange=grid;$('dt').onchange=route;$('rg').onchange=route;
+$('tl').onchange=grid;$('md').onchange=draw;$('rg').onchange=draw;$('d1').onchange=lap;$('d2').onchange=lap;$('pv').onclick=()=>geser(-1);$('nx').onclick=()=>geser(1);
 </script></body></html>

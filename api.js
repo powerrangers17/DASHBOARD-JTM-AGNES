@@ -17,9 +17,10 @@ list:'<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V
 pin:'<path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>',
 chart:'<path d="M18 20V10M12 20V4M6 20v-6"/>',
 users:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
+cam:'<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>',clock:'<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
 bolt:'<path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>',shield:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>'};
 const ic=n=>`<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[n]}</svg>`;
-const PAGES=[['index.html','grid','Dashboard'],['petugas.html','cal','Jadwal Yantek'],['temuan.html','list','Temuan'],['peta.html','pin','Peta'],['korelasi.html','chart','Korelasi'],['vendor.html','users','Pelaksana ROW']];
+const PAGES=[['index.html','grid','Dashboard'],['petugas.html','cal','Jadwal Yantek'],['lapor.html','cam','Lapor Kerja'],['riwayat.html','clock','Riwayat'],['temuan.html','list','Temuan'],['peta.html','pin','Peta'],['korelasi.html','chart','Korelasi'],['vendor.html','users','Pelaksana ROW']];
 addEventListener('DOMContentLoaded',()=>{
  const h=document.querySelector('header'),m=document.querySelector('main');if(!h||!m)return;
  const f=document.createElement('link');f.rel='stylesheet';f.href='https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap';document.head.appendChild(f);
@@ -35,5 +36,8 @@ addEventListener('DOMContentLoaded',()=>{
  const sh=document.createElement('div');sh.className='shell';
  sh.innerHTML='<aside class="side"><div class="logo">'+ic('bolt')+'<span>JTM Monitor</span></div>'+PAGES.map(p=>`<a href="${p[0]}"${p[0]===cur?' class="on" aria-current="page"':''}>${ic(p[1])}<span>${p[2]}</span></a>`).join('')+'</aside><div class="content"></div>';
  document.body.prepend(sh);sh.querySelector('.content').append(h,m);
+ document.querySelectorAll('section').forEach(s=>{if(s.querySelector('#map,textarea,.f,form'))s.classList.add('nosc')});
+ const fix=()=>document.querySelectorAll('section').forEach(s=>{const t=s.querySelector('table');if(t&&t.rows.length&&t.rows[0].cells.length>3)s.classList.add('wide');s.querySelectorAll('div[style*="overflow-x"]').forEach(d=>d.style.overflowX='visible')});
+ new MutationObserver(fix).observe(m,{childList:true,subtree:true});fix();
  setTimeout(()=>{if(typeof map!=='undefined'&&map.invalidateSize)map.invalidateSize()},300);
 });

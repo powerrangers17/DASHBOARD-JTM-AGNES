@@ -38,7 +38,7 @@ const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+Stri
 const monday=d=>{d=new Date(d);d.setDate(d.getDate()-(d.getDay()+6)%7);d.setHours(0,0,0,0);return d};
 const col=p=>p>=100?'var(--gr)':p>=70?'var(--yl)':'var(--rd)';
 const opt=(a,f)=>a.map(x=>`<option value="${esc(f?f(x)[0]:x)}">${esc(f?f(x)[1]:x)}</option>`).join('');
-let M,Y,wk=monday(new Date());
+let M,Y,V=[],wk=monday(new Date());
 const tok=()=>localStorage.getItem('tok')||(t=>{if(t)localStorage.setItem('tok',t);return t})(prompt('Masukkan token akses'));
 async function get(a){const r=await fetch(`${API}?action=${a}&token=${encodeURIComponent(tokn())}`);const d=await r.json();if(d.error){localStorage.removeItem('tok');throw new Error(d.error)}return d}
 async function post(op,data){const r=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({token:tokAdm(),op,data})});return r.json()}
@@ -53,17 +53,17 @@ function render(){
  const days=[...Array(7)].map((_,i)=>{const d=new Date(wk);d.setDate(d.getDate()+i);return d});
  $('wl').textContent=iso(days[0])+' s.d. '+iso(days[6]);
  $('cal').innerHTML='<tr><th>Regu</th>'+days.map(d=>`<th>${['Min','Sen','Sel','Rab','Kam','Jum','Sab'][d.getDay()]} ${d.getDate()}</th>`).join('')+'</tr>'+
-  M.regu.map(r=>`<tr><td><b>${esc(r)}</b></td>`+days.map(d=>`<td>`+Y.jadwal.filter(j=>j.regu===r&&j.tgl===iso(d)&&j.st!=='Batal').map(j=>`<span class="it ${j.st==='Selesai'?'ok':''}" data-id="${esc(j.id)}">${esc(j.sec||j.peny)}<br>${j.kms} kms</span>`).join('')+'</td>').join('')+'</tr>').join('');
+  [...M.regu,...V.filter(v=>Y.jadwal.some(j=>j.regu===v))].map(r=>`<tr><td><b>${esc(r)}</b></td>`+days.map(d=>`<td>`+Y.jadwal.filter(j=>j.regu===r&&j.tgl===iso(d)&&j.st!=='Batal').map(j=>`<span class="it ${j.st==='Selesai'?'ok':''}" data-id="${esc(j.id)}">${esc(j.sec||j.peny)}<br>${j.kms} kms</span>`).join('')+'</td>').join('')+'</tr>').join('');
  const open=Y.jadwal.filter(j=>j.st==='Terjadwal'&&j.tgl<=Y.today);
  $('rj').innerHTML=open.length?opt(open,j=>[j.id,`${j.tgl} ${j.regu} ${j.peny} ${j.sec||''}`]):'<option value="">Tidak ada jadwal terbuka</option>';
 }
 function fillUlp(){const u=Object.keys(M.ulp);$('ju').innerHTML=opt(u);fillPeny()}
 function fillPeny(){$('jp').innerHTML=opt(Object.keys(M.ulp[$('ju').value]||{}));fillSec()}
 function fillSec(){$('js').innerHTML='<option value="">(seluruh penyulang)</option>'+opt(((M.ulp[$('ju').value]||{})[$('jp').value])||[])}
-function fillPu(){$('pu').innerHTML=opt(Object.keys(M.ulp));$('rl').innerHTML=opt(M.regu);fillPp()}
+function fillPu(){$('pu').innerHTML=opt(Object.keys(M.ulp));$('rl').innerHTML=opt(M.regu.concat(V));fillPp()}
 function fillPp(){$('pp').innerHTML=opt(Object.keys(M.ulp[$('pu').value]||{}))}
 async function load(){try{[M,Y]=await Promise.all([quick('master'),get('yantek')]);
- if(!$('jr').options.length){$('jr').innerHTML=opt(M.regu);fillUlp();fillPu();$('jt').value=Y.today}render()}
+ if(!$('jr').options.length){try{V=(await quick('vendor')).vendor.map(x=>x.n).filter(n=>n.charAt(0)!=='(')}catch(e){}$('jr').innerHTML=opt(M.regu)+(V.length?'<optgroup label="Pihak ketiga">'+opt(V)+'</optgroup>':'');fillUlp();fillPu();$('jt').value=Y.today}render()}
  catch(e){$('st').textContent=e.message||'Gagal terhubung. Periksa URL API dan deploy ulang Apps Script.'}}
 async function act(op,data,ok){say('Menyimpan…');const r=await post(op,data);if(r.error){if(/Token/.test(r.error))localStorage.removeItem('tok_admin');return say(r.error,1)};say(ok);await load()}
 $('pu').onchange=fillPp;$('sp').onclick=()=>act('penugasan',{regu:$('pr').value,ulp:$('pu').value,peny:$('pp').value,target:$('pt').value},'Target disimpan.');
