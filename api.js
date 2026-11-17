@@ -11,8 +11,29 @@ async function quick(a){const c=localStorage.getItem('c_'+a);
   if(c){swr(a,()=>{}).catch(()=>{});return JSON.parse(c)}
   return swr(a,()=>{})}
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
-addEventListener('DOMContentLoaded',()=>{const h=document.querySelector('header');if(!h)return;
- const mk=(t,f)=>{const b=document.createElement('button');b.textContent=t;b.className='ghost';b.onclick=f;h.appendChild(b)};
+const ICON={grid:'<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>',
+cal:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+list:'<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
+pin:'<path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>',
+chart:'<path d="M18 20V10M12 20V4M6 20v-6"/>',
+users:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
+bolt:'<path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>',shield:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>'};
+const ic=n=>`<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[n]}</svg>`;
+const PAGES=[['index.html','grid','Dashboard'],['petugas.html','cal','Jadwal Yantek'],['temuan.html','list','Temuan'],['peta.html','pin','Peta'],['korelasi.html','chart','Korelasi'],['vendor.html','users','Pelaksana ROW']];
+addEventListener('DOMContentLoaded',()=>{
+ const h=document.querySelector('header'),m=document.querySelector('main');if(!h||!m)return;
+ const f=document.createElement('link');f.rel='stylesheet';f.href='https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap';document.head.appendChild(f);
+ const cur=location.pathname.split('/').pop()||'index.html',n=h.querySelector('nav');if(n)n.remove();
+ const acts=document.createElement('div');acts.className='acts';h.querySelectorAll(':scope>button').forEach(b=>acts.appendChild(b));
+ const mk=(t,fn)=>{const b=document.createElement('button');b.textContent=t;b.className='ghost';b.onclick=fn;acts.appendChild(b)};
  mk('Cetak',()=>print());
  mk('Unduh CSV',()=>{const o=[];document.querySelectorAll('table').forEach(t=>{[...t.rows].forEach(r=>o.push([...r.cells].map(c=>'"'+c.innerText.replace(/"/g,'""').trim()+'"').join(',')));o.push('')});
-  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+o.join('\n')],{type:'text/csv'}));a.download=(document.title||'data')+'.csv';a.click()})});
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+o.join('\n')],{type:'text/csv'}));a.download=(document.title||'data')+'.csv';a.click()});
+ h.appendChild(acts);
+ const g=new Date().getHours(),hi=g<11?'Selamat pagi':g<15?'Selamat siang':g<18?'Selamat sore':'Selamat malam';
+ h.firstElementChild.insertAdjacentHTML('afterbegin','<div class="hi">'+hi+'</div>');
+ const sh=document.createElement('div');sh.className='shell';
+ sh.innerHTML='<aside class="side"><div class="logo">'+ic('bolt')+'<span>JTM Monitor</span></div>'+PAGES.map(p=>`<a href="${p[0]}"${p[0]===cur?' class="on" aria-current="page"':''}>${ic(p[1])}<span>${p[2]}</span></a>`).join('')+'</aside><div class="content"></div>';
+ document.body.prepend(sh);sh.querySelector('.content').append(h,m);
+ setTimeout(()=>{if(typeof map!=='undefined'&&map.invalidateSize)map.invalidateSize()},300);
+});

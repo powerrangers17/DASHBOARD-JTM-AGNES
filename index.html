@@ -2,9 +2,11 @@
 <html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Dashboard JTM</title>
 <link rel="stylesheet" href="style.css"><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#14232E"><script src="config.js"></script><script src="api.js"></script></head><body>
-<header><div><h1>Dashboard JTM – Inspeksi, ROW, Gangguan</h1><div class="m" id="st" style="color:#B8C4CC">Memuat…</div></div>
+<header><div><h1>Dashboard JTM</h1><div class="m" id="st" style="color:#B8C4CC">Memuat…</div></div>
 <nav><a href="petugas.html">Jadwal Yantek</a><a href="temuan.html">Temuan</a><a href="peta.html">Peta</a><a href="korelasi.html">Korelasi</a><a href="vendor.html">Pelaksana ROW</a></nav><button id="rf">Muat ulang data</button></header>
 <main>
+<div class="kpis wide" id="kp"></div>
+<section class="banner wide" id="bn"></section>
 <section><h2>Hari tanpa gangguan</h2><div id="gg"></div></section>
 <section><h2>Capaian Mandorline bulan ini (per ULP)</h2><div id="bm"></div><h2 style="margin-top:18px">Capaian Yantek bulan ini (per ULP)</h2><div id="by"></div></section>
 <section><h2>Capaian per Mandorline</h2><div id="bp"></div></section>
@@ -20,6 +22,8 @@ const col=p=>p>=100?'var(--gr)':p>=70?'var(--yl)':'var(--rd)';
 const bars=(a,t,r)=>a.length?a.map(x=>{const p=pct(x[r],x[t]);return `<div class="row"><span>${esc(x.n)}</span><div class="bar"><i style="width:${Math.min(p,100)}%;background:${col(p)}"></i></div><b>${p}%</b></div>`}).join(''):'<p class="m">Belum ada data bulan ini.</p>';
 function render(d){
  $('st').textContent='Diperbarui '+d.updated;
+ const S=k=>d.ulp.reduce((s,x)=>s+x[k],0),G=d.gg,T=(i,l,v,u,fg,bg)=>`<div class="tile"><div class="ico" style="background:${bg};color:${fg}">${ic(i)}</div><div><small>${l}</small><b>${v}<span>${u}</span></b></div></div>`;
+ $('kp').innerHTML=T('chart','Capaian Mandorline',pct(S('rM'),S('tM')),'%','#6A55D8','#E6E1FA')+T('users','Capaian Yantek',pct(S('rY'),S('tY')),'%','#D6336C','#FBE0EA')+T('shield','Gangguan bulan ini',G.total?G.count:'-','','#D9822B','#FCEBD3')+T('bolt','Hari tanpa gangguan',G.hari==null?'-':G.hari,'','#0B6E73','#D3EEEC');
  $('bm').innerHTML=bars(d.ulp,'tM','rM');$('by').innerHTML=bars(d.ulp,'tY','rY');
  $('bp').innerHTML=bars(d.mdl,'t','r');
  const g=d.gg;
@@ -40,4 +44,6 @@ async function load(fresh){try{await swr('all',render,fresh)}catch(e){$('st').te
 $('rf').onclick=()=>load(true);
 $('cp').onclick=()=>navigator.clipboard.writeText($('wa').value).then(()=>{$('cp').textContent='Tersalin'});
 load();
+swr('korelasi',k=>{const n=k.alerts.length,m=k.alerts.filter(a=>a.l==='merah').length;
+ $('bn').innerHTML=`<div><small>PERINGATAN OTOMATIS</small><h3>${n?n+' hal perlu perhatian ('+m+' penting)':'Tidak ada peringatan saat ini'}</h3><p>${n?esc(k.alerts[0].t):'Semua indikator dalam batas aman.'}</p></div><a class="btn" href="korelasi.html">Lihat peringatan</a>`}).catch(()=>{});
 </script></body></html>
