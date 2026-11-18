@@ -17,8 +17,8 @@
 <script>
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const r2=x=>Math.round(x*100)/100,pct=(r,t)=>t>0?Math.round(r/t*100):0;
-const col=p=>p>=100?'var(--gr)':p>=70?'var(--yl)':'var(--rd)';
+const r2=x=>Math.round(x*100)/100,pct=(r,t)=>t>0?Math.min(100,Math.round(r/t*100)):0;
+const col=p=>p>=90?'var(--gr)':p>=70?'var(--yl)':'var(--rd)';
 const bars=(a,t,r)=>a.length?a.map(x=>{const p=pct(x[r],x[t]);return `<div class="row"><span>${esc(x.n)}</span><div class="bar"><i style="width:${Math.min(p,100)}%;background:${col(p)}"></i></div><b>${p}%</b></div>`}).join(''):'<p class="m">Belum ada data pada periode ini.</p>';
 const topn=o=>Object.entries(o).sort((a,b)=>b[1]-a[1]).slice(0,5).map(e=>`<tr><td>${esc(e[0])}</td><td><b>${e[1]}</b></td></tr>`).join('')||'<tr><td class="m">Tidak ada</td></tr>';
 let D=null;

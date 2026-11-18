@@ -1,13 +1,14 @@
 // Pembaca data bersama: tampilkan data tersimpan di browser seketika, lalu perbarui dari server.
 const tokn=()=>(typeof TOKEN_LIHAT!=='undefined'&&TOKEN_LIHAT)||localStorage.getItem('tok')||(t=>{if(t)localStorage.setItem('tok',t);return t})(prompt('Masukkan token akses'));
 const tokAdm=()=>localStorage.getItem('tok_admin')||(t=>{if(t)localStorage.setItem('tok_admin',t);return t})(prompt('Masukkan token ADMIN untuk menyimpan data'));
+const CK=a=>'c_'+(typeof DEMO!=='undefined'&&DEMO?'d_':'')+a;
 async function swr(a,cb,fresh){
-  const ck='c_'+a; try{const c=JSON.parse(localStorage.getItem(ck));if(c&&!fresh)cb(c,true)}catch(e){}
+  const ck=CK(a); try{const c=JSON.parse(localStorage.getItem(ck));if(c&&!fresh)cb(c,true)}catch(e){}
   const r=await fetch(`${API}?action=${a}&token=${encodeURIComponent(tokn())}${fresh?'&fresh=1':''}`),d=await r.json();
   if(d.error){localStorage.removeItem('tok');throw new Error(d.error)}
   try{localStorage.setItem(ck,JSON.stringify(d))}catch(e){}
   cb(d,false);return d}
-async function quick(a){const c=localStorage.getItem('c_'+a);
+async function quick(a){const c=localStorage.getItem(CK(a));
   if(c){swr(a,()=>{}).catch(()=>{});return JSON.parse(c)}
   return swr(a,()=>{})}
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
@@ -31,6 +32,7 @@ addEventListener('DOMContentLoaded',()=>{
  const cur=location.pathname.split('/').pop()||'index.html',n=h.querySelector('nav');if(n)n.remove();
  const acts=document.createElement('div');acts.className='acts';h.querySelectorAll(':scope>button').forEach(b=>acts.appendChild(b));
  const mk=(t,fn)=>{const b=document.createElement('button');b.textContent=t;b.className='ghost';b.onclick=fn;acts.appendChild(b)};
+ if(typeof API_DEMO!=='undefined'&&API_DEMO)mk(DEMO?'Mode: data contoh':'Mode: data nyata',()=>{localStorage.setItem('mode',DEMO?'real':'demo');location.reload()});
  mk('Cetak',()=>print());
  mk('Unduh CSV',()=>{const o=[];document.querySelectorAll('table').forEach(t=>{[...t.rows].forEach(r=>o.push([...r.cells].map(c=>'"'+c.innerText.replace(/"/g,'""').trim()+'"').join(',')));o.push('')});
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+o.join('\n')],{type:'text/csv'}));a.download=(document.title||'data')+'.csv';a.click()});
@@ -43,6 +45,7 @@ addEventListener('DOMContentLoaded',()=>{
  const sh=document.createElement('div');sh.className='shell';
  sh.innerHTML='<aside class="side"><div class="logo">'+ic('bolt')+'<span>JTM Monitor</span></div>'+PAGES.map(p=>`<a href="${p[0]}"${p[0]===cur?' class="on" aria-current="page"':''}>${ic(p[1])}<span>${p[2]}</span></a>`).join('')+'</aside><div class="content"></div>';
  document.body.prepend(sh);sh.querySelector('.content').append(h,m);
+ if((typeof DEMO!=='undefined'&&DEMO)||(typeof LABEL_DEMO!=='undefined'&&LABEL_DEMO)){const d=document.createElement('div');d.className='demo';d.textContent='DATA CONTOH (FIKTIF) - bukan data operasional';sh.querySelector('.content').prepend(d)}
  document.querySelectorAll('section').forEach(s=>{if(s.querySelector('#map,textarea,.f,form'))s.classList.add('nosc')});
  const fix=()=>document.querySelectorAll('section').forEach(s=>{const t=s.querySelector('table');if(t&&t.rows.length&&t.rows[0].cells.length>3)s.classList.add('wide');s.querySelectorAll('div[style*="overflow-x"]').forEach(d=>d.style.overflowX='visible')});
  new MutationObserver(fix).observe(m,{childList:true,subtree:true});fix();

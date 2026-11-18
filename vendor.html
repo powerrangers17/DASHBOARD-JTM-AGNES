@@ -17,7 +17,7 @@ const col=p=>p>=80?'var(--gr)':p>=50?'var(--yl)':'var(--rd)';
 function render(d){
  $('st').textContent='Diperbarui '+d.updated;
  $('vd').innerHTML='<tr><th>Pelaksana</th><th>Section</th><th>Kms</th><th style="width:16%">Sudah update</th><th>Belum tuntas</th><th>Belum update</th><th>Belum terlaksana</th><th>Tebang real/target (titik)</th><th>Rampal (kms)</th><th>Update terakhir</th></tr>'+
-  rows(d.vendor,x=>{const p=x.sec?Math.round(x.su/x.sec*100):0,t=x.tt?Math.round(x.rt/x.tt*100)+'%':'-',
+  rows(d.vendor,x=>{const p=x.sec?Math.round(x.su/x.sec*100):0,t=x.tt?Math.min(100,Math.round(x.rt/x.tt*100))+'%':'-',
    h=x.hari==null?'belum ada':x.hari+' hari'+(x.hari>14?' <b>(perlu update)</b>':'');
    return [esc(x.n),x.sec,x.kms,bar(p,col(p))+p+'%',x.bn,x.bu,x.bt,`${x.rt}/${x.tt} (${t})`,x.ramp,h]});
  $('ul').innerHTML='<tr><th>ULP</th><th>Sudah update</th><th>Belum tuntas</th><th>Belum update</th><th>Belum terlaksana</th></tr>'+rows(d.ulp,x=>[esc(x.n),x.su,x.bn,x.bu,x.bt]);

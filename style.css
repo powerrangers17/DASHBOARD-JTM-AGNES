@@ -57,3 +57,4 @@ section.nosc,section.banner{max-height:none}section.nosc{overflow:visible}
 td .ghost{padding:4px 10px;font-size:.75rem;margin:2px 4px 0 0}
 .per{display:flex;gap:8px;align-items:center;margin-left:auto}.per+.acts{margin-left:0}.per select{width:auto;padding:8px 12px;font-size:.85rem;background:#fff}
 .pl{font-weight:400;color:var(--mut);font-size:.85rem}
+.demo{background:#FFF1C9;color:#7A5200;border:1px solid #F0C75E;border-radius:12px;padding:8px 14px;font-weight:600;font-size:.85rem;margin-bottom:14px}

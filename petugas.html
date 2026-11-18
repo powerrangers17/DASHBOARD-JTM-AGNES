@@ -36,7 +36,7 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 const monday=d=>{d=new Date(d);d.setDate(d.getDate()-(d.getDay()+6)%7);d.setHours(0,0,0,0);return d};
-const col=p=>p>=100?'var(--gr)':p>=70?'var(--yl)':'var(--rd)';
+const col=p=>p>=90?'var(--gr)':p>=70?'var(--yl)':'var(--rd)';
 const opt=(a,f)=>a.map(x=>`<option value="${esc(f?f(x)[0]:x)}">${esc(f?f(x)[1]:x)}</option>`).join('');
 let M,Y,V=[],wk=monday(new Date());
 const tok=()=>localStorage.getItem('tok')||(t=>{if(t)localStorage.setItem('tok',t);return t})(prompt('Masukkan token akses'));
@@ -45,7 +45,7 @@ async function post(op,data){const r=await fetch(API,{method:'POST',headers:{'Co
 function say(t,bad){$('msg').textContent=t;$('msg').style.color=bad?'var(--rd)':'var(--gr)'}
 function render(){
  $('st').textContent='Hari ini '+Y.today+', sisa hari kerja bulan ini: '+Y.sisa;
- $('bd').innerHTML=Y.regu.length?Y.regu.map(r=>{const p=r.target?Math.round(r.real/r.target*100):0;
+ $('bd').innerHTML=Y.regu.length?Y.regu.map(r=>{const p=r.target?Math.min(100,Math.round(r.real/r.target*100)):0;
   const td=Y.jadwal.filter(j=>j.regu===r.n&&j.tgl===Y.today&&j.st!=='Batal');
   return `<div class="row" style="grid-template-columns:150px 1fr 52px"><span>${esc(r.n)}</span><div class="bar"><i style="width:${Math.min(p,100)}%;background:${col(p)}"></i></div><b>${p}%</b></div>
   <p class="m">Real ${r.real} dari ${r.target} kms. Saran target harian: <b>${r.saran} kms</b>. Hari ini: ${td.length?td.map(j=>esc((j.sec||j.peny)+' '+j.kms+' kms'+(j.st==='Selesai'?' (selesai)':''))).join(', '):'belum ada jadwal'}</p>`}).join('')

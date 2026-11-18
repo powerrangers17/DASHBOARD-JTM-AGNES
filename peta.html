@@ -12,6 +12,7 @@
 <p><button id="pv" class="ghost">‹ Hari sebelumnya</button> <button id="nx" class="ghost">Hari berikutnya ›</button></p>
 <div id="map" style="height:64vh;border:1px solid #D5DCE1" role="img" aria-label="Peta temuan terbuka dan rute pelaksana"></div>
 <div id="lg" class="m" style="margin-top:10px"></div>
+<div id="pl2" class="m" style="margin-top:8px"></div>
 <p class="m">Lingkaran besar = kelompok temuan terbuka (merah Eskalasi/Emergency, oranye Prioritas 1, kuning Prioritas 2, biru Prioritas 3, abu-abu belum ditetapkan). Angka berwarna dan garis putus-putus = rencana jadwal. Kotak centang = pekerjaan yang sudah dilaporkan (klik untuk melihat foto). Posisi memakai GPS laporan bila ada, atau titik tengah section.</p>
 <p id="ms" class="m"></p></section></main>
 <script>
@@ -24,8 +25,10 @@ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribu
 const gl=L.layerGroup().addTo(map),rl=L.layerGroup().addTo(map);let S={},P={},Y={jadwal:[]},G=[],LP=[],NM={};
 const yr=()=>{const y=periode().y;return y?+y%100:0};
 function setRange(){const q=periode(),y=+q.y;if(!q.y)return;const a=q.m?new Date(y,+q.m-1,1):new Date(y,0,1),b=q.m?new Date(y,+q.m,0):new Date(y,11,31);$('d1').value=iso(a);$('d2').value=iso(b)}
-function grid(){gl.clearLayers();if($('tl').value!=='1')return;
- G.filter(g=>!yr()||g[4]===yr()).forEach(g=>L.circleMarker([g[0],g[1]],{radius:Math.min(4+Math.sqrt(g[2])*1.6,20),color:PC[g[3]],fillColor:PC[g[3]],fillOpacity:.45,weight:1}).bindPopup(g[2]+' temuan terbuka').addTo(gl))}
+function grid(){gl.clearLayers();const F=G.filter(g=>!yr()||g[4]===yr()),c=[0,0,0,0,0];F.forEach(g=>c[g[3]]+=g[2]);
+ $('pl2').innerHTML='<b>Skala prioritas temuan terbuka:</b> '+[4,3,2,1,0].map(k=>`<span style="margin-left:12px"><i style="display:inline-block;width:11px;height:11px;border-radius:50%;background:${PC[k]};margin-right:5px"></i>${['Belum ditetapkan','Prioritas 3','Prioritas 2','Prioritas 1','Eskalasi / Emergency'][k]}: <b>${c[k]}</b></span>`).join('');
+ if($('tl').value!=='1')return;
+ F.forEach(g=>L.circleMarker([g[0],g[1]],{radius:Math.min(4+Math.sqrt(g[2])*1.6,20),color:PC[g[3]],fillColor:PC[g[3]],fillOpacity:.45,weight:1}).bindPopup(g[2]+' temuan terbuka').addTo(gl))}
 async function lap(){try{const r=await(await fetch(`${API}?action=laporan&token=${encodeURIComponent(tokn())}&dari=${$('d1').value}&sampai=${$('d2').value}`)).json();LP=r.data||[]}catch(e){LP=[]}names();draw()}
 function names(){const cur=$('rg').value,n=new Set([...Object.keys(NM),...Y.jadwal.map(j=>j.regu),...LP.map(x=>x.pel)]);
  $('rg').innerHTML='<option value="">(semua pelaksana)</option>'+[...n].sort().map(x=>`<option${x===cur?' selected':''}>${esc(x)}</option>`).join('')}
