@@ -1,3 +1,4 @@
+if(typeof HOME!=='undefined'&&HOME!=='index.html'&&/(^|\/)(index\.html)?$/.test(location.pathname))location.replace(HOME);
 // Pembaca data bersama: tampilkan data tersimpan di browser seketika, lalu perbarui dari server.
 const tokn=()=>(typeof TOKEN_LIHAT!=='undefined'&&TOKEN_LIHAT)||localStorage.getItem('tok')||(t=>{if(t)localStorage.setItem('tok',t);return t})(prompt('Masukkan token akses'));
 const tokAdm=()=>localStorage.getItem('tok_admin')||(t=>{if(t)localStorage.setItem('tok_admin',t);return t})(prompt('Masukkan token ADMIN untuk menyimpan data'));
@@ -25,7 +26,8 @@ const BLN=['Semua bulan','Januari','Februari','Maret','April','Mei','Juni','Juli
 const PER={cb:[],get(){const n=new Date(),y=localStorage.getItem('per_y'),m=localStorage.getItem('per_m');return{y:y===null?String(n.getFullYear()):y,m:m===null?String(n.getMonth()+1).padStart(2,'0'):m}}};
 const periode=()=>PER.get();
 const plabel=()=>{const p=PER.get();return p.y?(p.m?BLN[+p.m]+' '+p.y:'Tahun '+p.y):(p.m?BLN[+p.m]+' (semua tahun)':'Semua periode')};
-const PAGES=[['index.html','grid','Dashboard'],['petugas.html','cal','Jadwal Yantek'],['lapor.html','cam','Lapor Kerja'],['riwayat.html','clock','Riwayat'],['temuan.html','list','Temuan'],['peta.html','pin','Peta'],['korelasi.html','chart','Korelasi'],['vendor.html','users','Pelaksana ROW']];
+const PAGES=[['index.html','grid','Dashboard'],['petugas.html','cal','Jadwal Yantek'],['lapor.html','cam','Lapor Kerja'],['riwayat.html','clock','Riwayat'],['temuan.html','list','Temuan'],['peta.html','pin','Peta'],['korelasi.html','chart','Korelasi'],['vendor.html','users','Pelaksana ROW'],['peralatan.html','shield','Kerusakan Peralatan'],['pemeliharaan.html','list','Pemeliharaan WO']];
+const SHOW=typeof MENU!=='undefined'?PAGES.filter(p=>MENU.includes(p[0])):PAGES;
 addEventListener('DOMContentLoaded',()=>{
  const h=document.querySelector('header'),m=document.querySelector('main');if(!h||!m)return;
  const f=document.createElement('link');f.rel='stylesheet';f.href='https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap';document.head.appendChild(f);
@@ -43,7 +45,7 @@ addEventListener('DOMContentLoaded',()=>{
  const g=new Date().getHours(),hi=g<11?'Selamat pagi':g<15?'Selamat siang':g<18?'Selamat sore':'Selamat malam';
  h.firstElementChild.insertAdjacentHTML('afterbegin','<div class="hi">'+hi+'</div>');
  const sh=document.createElement('div');sh.className='shell';
- sh.innerHTML='<aside class="side"><div class="logo">'+ic('bolt')+'<span>JTM Monitor</span></div>'+PAGES.map(p=>`<a href="${p[0]}"${p[0]===cur?' class="on" aria-current="page"':''}>${ic(p[1])}<span>${p[2]}</span></a>`).join('')+'</aside><div class="content"></div>';
+ sh.innerHTML='<aside class="side"><div class="logo">'+ic('bolt')+'<span>JTM Monitor</span></div>'+SHOW.map(p=>`<a href="${p[0]}"${p[0]===cur?' class="on" aria-current="page"':''}>${ic(p[1])}<span>${p[2]}</span></a>`).join('')+'</aside><div class="content"></div>';
  document.body.prepend(sh);sh.querySelector('.content').append(h,m);
  if((typeof DEMO!=='undefined'&&DEMO)||(typeof LABEL_DEMO!=='undefined'&&LABEL_DEMO)){const d=document.createElement('div');d.className='demo';d.textContent='DATA CONTOH (FIKTIF) - bukan data operasional';sh.querySelector('.content').prepend(d)}
  document.querySelectorAll('section').forEach(s=>{if(s.querySelector('#map,textarea,.f,form'))s.classList.add('nosc')});
